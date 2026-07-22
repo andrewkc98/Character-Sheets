@@ -50,7 +50,7 @@
     position:relative;
     overflow:hidden;
     display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-columns:minmax(0,1fr) minmax(240px,auto) 112px;
     gap:22px;
     align-items:end;
     padding:22px 24px;
@@ -77,6 +77,92 @@
   .identity-mark{position:relative;z-index:1;text-align:right;min-width:280px}
   .identity-mark strong{display:block;color:#e4a5a1;font-size:15px;letter-spacing:.055em;text-transform:uppercase}
   .identity-mark span{display:block;margin-top:4px;color:#a89e92;font-size:12px}
+
+  .portrait-control{
+    position:relative;
+    z-index:2;
+    align-self:center;
+    justify-self:end;
+    width:112px;
+  }
+  .portrait-frame{
+    position:relative;
+    display:block;
+    width:112px;
+    aspect-ratio:4/5;
+    overflow:hidden;
+    padding:0;
+    color:#cdbb98;
+    background:#211e1b;
+    border:1px solid #51483f;
+    border-radius:10px;
+    cursor:pointer;
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,.025);
+  }
+  .portrait-frame:hover{border-color:#a77772}
+  .portrait-frame img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+  }
+  .portrait-placeholder{
+    display:grid;
+    place-items:center;
+    height:100%;
+    padding:12px;
+    text-align:center;
+    font:800 9px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+  .portrait-placeholder::before{
+    content:"+";
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    margin:0 auto 8px;
+    border:1px solid #6a5c50;
+    border-radius:50%;
+    color:#e4a5a1;
+    font:400 24px/1 sans-serif;
+  }
+  .portrait-edit{
+    position:absolute;
+    right:6px;
+    bottom:6px;
+    padding:3px 6px;
+    border-radius:5px;
+    color:#f7f1e7;
+    background:rgba(23,21,19,.82);
+    font:800 8px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    pointer-events:none;
+  }
+  .portrait-remove{
+    position:absolute;
+    top:-8px;
+    right:-8px;
+    z-index:3;
+    display:grid;
+    place-items:center;
+    width:28px;
+    height:28px;
+    padding:0;
+    border:1px solid #70524c;
+    border-radius:50%;
+    color:#f7f1e7;
+    background:var(--red);
+    font-size:17px;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 3px 10px rgba(0,0,0,.25);
+  }
+  .portrait-remove:hover{background:var(--red-dark)}
+  .portrait-frame img[hidden],.portrait-placeholder[hidden],.portrait-remove[hidden]{display:none!important}
 
   .roll-console{
     position:sticky;
@@ -353,8 +439,11 @@
   }
   @media(max-width:760px){
     .shell{padding:10px 10px 40px}
-    .masthead{grid-template-columns:1fr;padding:18px}
-    .identity-mark{text-align:left;min-width:0}
+    .masthead{grid-template-columns:minmax(0,1fr) 92px;padding:18px}
+    .masthead>div:first-child{grid-column:1/-1}
+    .identity-mark{text-align:left;min-width:0;align-self:center}
+    .portrait-control{width:92px}
+    .portrait-frame{width:92px}
     .roll-console{position:relative;grid-template-columns:1fr;padding:10px;border-left-width:6px}
     .mode-group,.quick-actions{justify-content:flex-start}
     .dashboard{grid-template-columns:1fr}
@@ -429,6 +518,7 @@
   @media(prefers-reduced-motion:reduce){.roll-toast{transition:none}}
 
   @media print{.roll-toast{display:none!important}
+    .portrait-edit,.portrait-remove{display:none!important}
     body{background:#fff}
     .shell{max-width:none;padding:0}
     .roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
@@ -499,6 +589,15 @@
     <div class="identity-mark">
       <strong id="headerName">Sienna King — The Tracker</strong>
       <span id="headerClass">Druid (Circle of the Land) 3 · Outlander (Bureau Field Asset) · Proficiency +2</span>
+    </div>
+    <div class="portrait-control">
+      <button type="button" class="portrait-frame" id="portraitButton" aria-label="Choose or replace character portrait">
+        <img id="portraitImage" alt="Character portrait" hidden>
+        <span class="portrait-placeholder" id="portraitPlaceholder">Add portrait</span>
+        <span class="portrait-edit">Change</span>
+      </button>
+      <button type="button" class="portrait-remove" id="portraitRemove" aria-label="Remove character portrait" title="Remove portrait" hidden>×</button>
+      <input class="sr-only" type="file" id="portraitInput" accept="image/*">
     </div>
   </header>
 
@@ -628,7 +727,7 @@ defaultResources.deathSuccess=[false,false,false];
 defaultResources.deathFailure=[false,false,false];
 const defaultSlots={};
 Object.keys(CHARACTER.spellcasting.slots).forEach(level=>defaultSlots[level]=Array(CHARACTER.spellcasting.slots[level]).fill(false));
-const DEFAULTS={hpCurrent:CHARACTER.hp,hpMax:CHARACTER.hp,tempHp:0,resources:defaultResources,slots:defaultSlots,conditions:[],rolls:[],portentValues:[null,null],portentUsed:[false,false],fields:{}};
+const DEFAULTS={portrait:"",hpCurrent:CHARACTER.hp,hpMax:CHARACTER.hp,tempHp:0,resources:defaultResources,slots:defaultSlots,conditions:[],rolls:[],portentValues:[null,null],portentUsed:[false,false],fields:{}};
 let state=cloneData(DEFAULTS);
 let trayQty=1,trayMod=0;
 const mode={adv:false,dis:false,crit:false};
@@ -691,18 +790,79 @@ function updateHp(){let cur=Math.max(0,Number($("#hpCurrent").value)||0),max=Mat
 function applyDamage(amount){amount=Math.max(0,Number(amount)||0);let temp=Number($("#tempHp").value)||0;const absorbed=Math.min(temp,amount);temp-=absorbed;amount-=absorbed;$("#tempHp").value=temp;if(amount>0)$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-amount);updateHp();}
 function applyHeal(amount){const max=Number($("#hpMax").value)||1;$("#hpCurrent").value=Math.min(max,(Number($("#hpCurrent").value)||0)+Math.max(0,Number(amount)||0));updateHp();}
 function setMode(button,key,exclusive){mode[key]=!mode[key];button.setAttribute('aria-pressed',String(mode[key]));if(mode[key]&&exclusive){mode[exclusive]=false;$(exclusive==='adv'?'#advToggle':'#disToggle').setAttribute('aria-pressed','false');}}
+
+function renderPortrait(){
+  const image=$("#portraitImage");
+  const placeholder=$("#portraitPlaceholder");
+  const remove=$("#portraitRemove");
+  const hasPortrait=Boolean(state.portrait);
+  if(hasPortrait){
+    image.src=state.portrait;
+    image.hidden=false;
+    placeholder.hidden=true;
+    remove.hidden=false;
+  }else{
+    image.removeAttribute("src");
+    image.hidden=true;
+    placeholder.hidden=false;
+    remove.hidden=true;
+  }
+}
+
+function preparePortrait(file){
+  return new Promise((resolve,reject)=>{
+    if(!file || !file.type || !file.type.startsWith("image/")){
+      reject(new Error("Please select an image file."));
+      return;
+    }
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("The selected image could not be read."));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("The selected image could not be opened."));
+      image.onload=()=>{
+        const maxWidth=640;
+        const maxHeight=800;
+        const scale=Math.min(1,maxWidth/image.naturalWidth,maxHeight/image.naturalHeight);
+        const width=Math.max(1,Math.round(image.naturalWidth*scale));
+        const height=Math.max(1,Math.round(image.naturalHeight*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=width;
+        canvas.height=height;
+        const context=canvas.getContext("2d");
+        context.fillStyle="#211d19";
+        context.fillRect(0,0,width,height);
+        context.drawImage(image,0,0,width,height);
+        resolve(canvas.toDataURL("image/jpeg",.82));
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function choosePortrait(file){
+  try{
+    state.portrait=await preparePortrait(file);
+    renderPortrait();
+    saveState();
+  }catch(error){
+    alert(error.message||"The portrait could not be added.");
+  }
+}
+
 function collectFields(){const f={};$$('[data-save]').forEach(el=>f[el.id]=el.value);return f;}
 function populateFields(fields){Object.keys(fields||{}).forEach(id=>{const el=document.getElementById(id);if(el)el.value=fields[id];});}
 function saveState(){clearTimeout(saveTimer);const status=$("#saveState");if(status)status.textContent='Saving…';saveTimer=setTimeout(()=>{state.fields=collectFields();const ok=writeStorage(JSON.stringify(state));if(status)status.textContent=ok?'Saved locally':'Session only';updateHeader();},100);}
 function loadState(){try{const saved=JSON.parse(readStorage()||'null');if(saved)state=Object.assign(cloneData(DEFAULTS),saved,{resources:Object.assign(cloneData(DEFAULTS.resources),saved.resources||{}),slots:Object.assign(cloneData(DEFAULTS.slots),saved.slots||{})});}catch(error){console.warn(error);}populateFields(state.fields||{});$("#hpCurrent").value=state.hpCurrent;$("#hpMax").value=state.hpMax;$("#tempHp").value=state.tempHp;}
 function updateHeader(){const name=$("#charName").value.trim()||'Unnamed Character',cls=$("#charClass").value.trim()||'Class',lvl=$("#charLevel").value||'1',bg=$("#charBackground").value.trim()||'Background';$("#headerName").textContent=name+' — '+CHARACTER.alias;$("#headerClass").textContent=cls+' '+lvl+' · '+bg+' · Proficiency +'+CHARACTER.proficiency;}
 function exportSave(){state.fields=collectFields();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=CHARACTER.slug+'-character-save.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
-function importSave(file){const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result);state=Object.assign(cloneData(DEFAULTS),x,{resources:Object.assign(cloneData(DEFAULTS.resources),x.resources||{}),slots:Object.assign(cloneData(DEFAULTS.slots),x.slots||{})});populateFields(state.fields||{});$("#hpCurrent").value=state.hpCurrent;$("#hpMax").value=state.hpMax;$("#tempHp").value=state.tempHp;renderResources();renderSlots();renderConditions();renderPortents();renderLog();updateHp();updateHeader();}catch(error){alert('That file is not a valid character-sheet save.');}};reader.readAsText(file);}
+function importSave(file){const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result);state=Object.assign(cloneData(DEFAULTS),x,{resources:Object.assign(cloneData(DEFAULTS.resources),x.resources||{}),slots:Object.assign(cloneData(DEFAULTS.slots),x.slots||{})});populateFields(state.fields||{});$("#hpCurrent").value=state.hpCurrent;$("#hpMax").value=state.hpMax;$("#tempHp").value=state.tempHp;renderResources();renderSlots();renderConditions();renderPortents();renderPortrait();renderLog();updateHp();updateHeader();}catch(error){alert('That file is not a valid character-sheet save.');}};reader.readAsText(file);}
 function resetByRefresh(refresh){CHARACTER.resources.forEach(r=>{if(r.refresh===refresh||refresh==='long'&&r.refresh==='short')state.resources[r.key]=Array(r.count).fill(false);});}
 function shortRest(){resetByRefresh('short');renderResources();showResult('Short Rest','REST','Short-rest resources restored',0);saveState();}
 function longRest(){$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;resetByRefresh('long');Object.keys(state.slots).forEach(l=>state.slots[l]=state.slots[l].map(()=>false));state.resources.deathSuccess=[false,false,false];state.resources.deathFailure=[false,false,false];state.conditions=[];renderResources();renderSlots();renderConditions();updateHp();if(CHARACTER.special==='portent')rollPortents(true);else showResult('Long Rest','REST','HP, slots, and resources restored',0);saveState();}
-function bindEvents(){$("#advToggle").addEventListener('click',e=>setMode(e.currentTarget,'adv','dis'));$("#disToggle").addEventListener('click',e=>setMode(e.currentTarget,'dis','adv'));$("#critToggle").addEventListener('click',e=>setMode(e.currentTarget,'crit'));$("#initiativeRoll").addEventListener('click',()=>rollCheck('Initiative',CHARACTER.initiative));$("#hpMinus").addEventListener('click',()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});$("#hpPlus").addEventListener('click',()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});$("#damageBtn").addEventListener('click',()=>applyDamage($("#hpAmount").value));$("#healBtn").addEventListener('click',()=>applyHeal($("#hpAmount").value));$("#fullHealBtn").addEventListener('click',()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});['hpCurrent','hpMax','tempHp'].forEach(id=>$("#"+id).addEventListener('input',updateHp));$$('[data-counter]').forEach(b=>b.addEventListener('click',()=>{const d=Number(b.dataset.delta);if(b.dataset.counter==='qty'){trayQty=clamp(trayQty+d,1,20);$("#qtyOutput").textContent=trayQty;}else{trayMod=clamp(trayMod+d,-20,20);$("#modOutput").textContent=sign(trayMod);}}));$("#undoRoll").addEventListener('click',()=>{state.rolls.shift();renderLog();saveState();});$("#clearRolls").addEventListener('click',()=>{state.rolls=[];renderLog();saveState();});$("#shortRest").addEventListener('click',shortRest);$("#longRest").addEventListener('click',longRest);$("#exportState").addEventListener('click',exportSave);$("#importState").addEventListener('click',()=>$("#importFile").click());$("#importFile").addEventListener('change',e=>{if(e.target.files[0])importSave(e.target.files[0]);e.target.value='';});$("#printSheet").addEventListener('click',()=>window.print());$("#resetSheet").addEventListener('click',()=>{if(confirm('Reset all editable fields, trackers, spell slots, and roll history?')){clearStorage();location.reload();}});const toastClose=$("#rollToastClose");if(toastClose)toastClose.addEventListener('click',hideRollToast);$$('[data-save]').forEach(el=>el.addEventListener('input',saveState));}
-function initialize(){loadState();renderAbilities();renderSkills();renderAttacks();renderDice();renderConditions();renderResources();renderSpellStats();renderSlots();renderSpells();renderSpecial();renderFeatures();renderProficiencies();renderLog();bindEvents();updateHp();updateHeader();const warning=$("#interactionWarning");if(warning)warning.hidden=true;document.documentElement.dataset.sheetReady='true';}
+function bindEvents(){$("#advToggle").addEventListener('click',e=>setMode(e.currentTarget,'adv','dis'));$("#disToggle").addEventListener('click',e=>setMode(e.currentTarget,'dis','adv'));$("#critToggle").addEventListener('click',e=>setMode(e.currentTarget,'crit'));$("#initiativeRoll").addEventListener('click',()=>rollCheck('Initiative',CHARACTER.initiative));$("#hpMinus").addEventListener('click',()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});$("#hpPlus").addEventListener('click',()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});$("#damageBtn").addEventListener('click',()=>applyDamage($("#hpAmount").value));$("#healBtn").addEventListener('click',()=>applyHeal($("#hpAmount").value));$("#fullHealBtn").addEventListener('click',()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});['hpCurrent','hpMax','tempHp'].forEach(id=>$("#"+id).addEventListener('input',updateHp));$$('[data-counter]').forEach(b=>b.addEventListener('click',()=>{const d=Number(b.dataset.delta);if(b.dataset.counter==='qty'){trayQty=clamp(trayQty+d,1,20);$("#qtyOutput").textContent=trayQty;}else{trayMod=clamp(trayMod+d,-20,20);$("#modOutput").textContent=sign(trayMod);}}));$("#undoRoll").addEventListener('click',()=>{state.rolls.shift();renderLog();saveState();});$("#clearRolls").addEventListener('click',()=>{state.rolls=[];renderLog();saveState();});$("#shortRest").addEventListener('click',shortRest);$("#longRest").addEventListener('click',longRest);$("#portraitButton").addEventListener('click',()=>$("#portraitInput").click());$("#portraitInput").addEventListener('change',event=>{const file=event.target.files[0];if(file)choosePortrait(file);event.target.value='';});$("#portraitRemove").addEventListener('click',()=>{state.portrait='';renderPortrait();saveState();});$("#exportState").addEventListener('click',exportSave);$("#importState").addEventListener('click',()=>$("#importFile").click());$("#importFile").addEventListener('change',e=>{if(e.target.files[0])importSave(e.target.files[0]);e.target.value='';});$("#printSheet").addEventListener('click',()=>window.print());$("#resetSheet").addEventListener('click',()=>{if(confirm('Reset all editable fields, trackers, spell slots, and roll history?')){clearStorage();location.reload();}});const toastClose=$("#rollToastClose");if(toastClose)toastClose.addEventListener('click',hideRollToast);$$('[data-save]').forEach(el=>el.addEventListener('input',saveState));}
+function initialize(){loadState();renderPortrait();renderAbilities();renderSkills();renderAttacks();renderDice();renderConditions();renderResources();renderSpellStats();renderSlots();renderSpells();renderSpecial();renderFeatures();renderProficiencies();renderLog();bindEvents();updateHp();updateHeader();const warning=$("#interactionWarning");if(warning)warning.hidden=true;document.documentElement.dataset.sheetReady='true';}
 try{initialize();}catch(error){console.error(error);const warning=document.getElementById('interactionWarning');if(warning){warning.hidden=false;warning.textContent='Interactive controls could not start in this viewer. Open the hosted GitHub Pages link in Safari or another full browser.';}}
 </script>
 </body>
