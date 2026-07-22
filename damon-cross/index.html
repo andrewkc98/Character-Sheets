@@ -52,7 +52,7 @@
     position:relative;
     overflow:hidden;
     display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-columns:minmax(0,1fr) minmax(240px,auto) 112px;
     gap:22px;
     align-items:end;
     padding:22px 24px;
@@ -79,6 +79,92 @@
   .identity-mark{position:relative;z-index:1;text-align:right;min-width:280px}
   .identity-mark strong{display:block;color:#e4a5a1;font-size:15px;letter-spacing:.055em;text-transform:uppercase}
   .identity-mark span{display:block;margin-top:4px;color:#a89e92;font-size:12px}
+
+  .portrait-control{
+    position:relative;
+    z-index:2;
+    align-self:center;
+    justify-self:end;
+    width:112px;
+  }
+  .portrait-frame{
+    position:relative;
+    display:block;
+    width:112px;
+    aspect-ratio:4/5;
+    overflow:hidden;
+    padding:0;
+    color:#cdbb98;
+    background:#211e1b;
+    border:1px solid #51483f;
+    border-radius:10px;
+    cursor:pointer;
+    box-shadow:inset 0 0 0 3px rgba(255,255,255,.025);
+  }
+  .portrait-frame:hover{border-color:#a77772}
+  .portrait-frame img{
+    display:block;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+  }
+  .portrait-placeholder{
+    display:grid;
+    place-items:center;
+    height:100%;
+    padding:12px;
+    text-align:center;
+    font:800 9px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+  }
+  .portrait-placeholder::before{
+    content:"+";
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    margin:0 auto 8px;
+    border:1px solid #6a5c50;
+    border-radius:50%;
+    color:#e4a5a1;
+    font:400 24px/1 sans-serif;
+  }
+  .portrait-edit{
+    position:absolute;
+    right:6px;
+    bottom:6px;
+    padding:3px 6px;
+    border-radius:5px;
+    color:#f7f1e7;
+    background:rgba(23,21,19,.82);
+    font:800 8px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.07em;
+    text-transform:uppercase;
+    pointer-events:none;
+  }
+  .portrait-remove{
+    position:absolute;
+    top:-8px;
+    right:-8px;
+    z-index:3;
+    display:grid;
+    place-items:center;
+    width:28px;
+    height:28px;
+    padding:0;
+    border:1px solid #70524c;
+    border-radius:50%;
+    color:#f7f1e7;
+    background:var(--red);
+    font-size:17px;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 3px 10px rgba(0,0,0,.25);
+  }
+  .portrait-remove:hover{background:var(--red-dark)}
+  .portrait-frame img[hidden],.portrait-placeholder[hidden],.portrait-remove[hidden]{display:none!important}
 
   .roll-console{
     position:sticky;
@@ -355,8 +441,11 @@
   }
   @media(max-width:760px){
     .shell{padding:10px 10px 40px}
-    .masthead{grid-template-columns:1fr;padding:18px}
-    .identity-mark{text-align:left;min-width:0}
+    .masthead{grid-template-columns:minmax(0,1fr) 92px;padding:18px}
+    .masthead>div:first-child{grid-column:1/-1}
+    .identity-mark{text-align:left;min-width:0;align-self:center}
+    .portrait-control{width:92px}
+    .portrait-frame{width:92px}
     .roll-console{position:relative;grid-template-columns:1fr;padding:10px;border-left-width:6px}
     .mode-group,.quick-actions{justify-content:flex-start}
     .dashboard{grid-template-columns:1fr}
@@ -431,6 +520,7 @@
   @media(prefers-reduced-motion:reduce){.roll-toast{transition:none}}
 
   @media print{.roll-toast{display:none!important}
+    .portrait-edit,.portrait-remove{display:none!important}
     body{background:#fff}
     .shell{max-width:none;padding:0}
     .back-link,.roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
@@ -454,6 +544,15 @@
     <div class="identity-mark">
       <strong id="headerName">Damon Cross — The Fixer</strong>
       <span id="headerClass">Rogue (Mastermind) 3 · Bureau Detective · Proficiency +2</span>
+    </div>
+    <div class="portrait-control">
+      <button type="button" class="portrait-frame" id="portraitButton" aria-label="Choose or replace character portrait">
+        <img id="portraitImage" alt="Character portrait" hidden>
+        <span class="portrait-placeholder" id="portraitPlaceholder">Add portrait</span>
+        <span class="portrait-edit">Change</span>
+      </button>
+      <button type="button" class="portrait-remove" id="portraitRemove" aria-label="Remove character portrait" title="Remove portrait" hidden>×</button>
+      <input class="sr-only" type="file" id="portraitInput" accept="image/*">
     </div>
   </header>
 
@@ -728,6 +827,7 @@ function clearStorage(){
   try{localStorage.removeItem(STORAGE_KEY);}catch(error){storageEnabled=false;}
 }
 const DEFAULTS = {
+  portrait:"",
   hpCurrent:24,hpMax:24,tempHp:0,
   resources:{inspiration:[false],hitDice:[false,false,false],sneakUsed:[false],deathSuccess:[false,false,false],deathFailure:[false,false,false]},
   conditions:[],rolls:[]
@@ -1001,6 +1101,67 @@ function setMode(button,key,exclusiveKey=null){
   }
 }
 
+
+function renderPortrait(){
+  const image=$("#portraitImage");
+  const placeholder=$("#portraitPlaceholder");
+  const remove=$("#portraitRemove");
+  const hasPortrait=Boolean(state.portrait);
+  if(hasPortrait){
+    image.src=state.portrait;
+    image.hidden=false;
+    placeholder.hidden=true;
+    remove.hidden=false;
+  }else{
+    image.removeAttribute("src");
+    image.hidden=true;
+    placeholder.hidden=false;
+    remove.hidden=true;
+  }
+}
+
+function preparePortrait(file){
+  return new Promise((resolve,reject)=>{
+    if(!file || !file.type || !file.type.startsWith("image/")){
+      reject(new Error("Please select an image file."));
+      return;
+    }
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("The selected image could not be read."));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("The selected image could not be opened."));
+      image.onload=()=>{
+        const maxWidth=640;
+        const maxHeight=800;
+        const scale=Math.min(1,maxWidth/image.naturalWidth,maxHeight/image.naturalHeight);
+        const width=Math.max(1,Math.round(image.naturalWidth*scale));
+        const height=Math.max(1,Math.round(image.naturalHeight*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=width;
+        canvas.height=height;
+        const context=canvas.getContext("2d");
+        context.fillStyle="#211d19";
+        context.fillRect(0,0,width,height);
+        context.drawImage(image,0,0,width,height);
+        resolve(canvas.toDataURL("image/jpeg",.82));
+      };
+      image.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function choosePortrait(file){
+  try{
+    state.portrait=await preparePortrait(file);
+    renderPortrait();
+    saveState();
+  }catch(error){
+    alert(error.message||"The portrait could not be added.");
+  }
+}
+
 function collectFields(){
   const fields={};
   $$('[data-save]').forEach(el=>fields[el.id]=el.value);
@@ -1069,6 +1230,7 @@ function importSave(file){
       $("#hpMax").value=state.hpMax;
       $("#tempHp").value=state.tempHp;
       renderResources();
+      renderPortrait();
       renderLog();
       $$(".condition").forEach(btn=>btn.setAttribute("aria-pressed",String(state.conditions.includes(btn.textContent))));
       updateHp();
@@ -1110,6 +1272,9 @@ function bindEvents(){
     $$(".condition").forEach(btn=>btn.setAttribute("aria-pressed","false"));
     renderResources();updateHp();saveState();
   });
+  $("#portraitButton").addEventListener("click",()=>$("#portraitInput").click());
+  $("#portraitInput").addEventListener("change",event=>{const file=event.target.files[0];if(file)choosePortrait(file);event.target.value="";});
+  $("#portraitRemove").addEventListener("click",()=>{state.portrait="";renderPortrait();saveState();});
   $("#exportState").addEventListener("click",exportSave);
   $("#importState").addEventListener("click",()=>$("#importFile").click());
   $("#importFile").addEventListener("change",event=>{const file=event.target.files[0];if(file)importSave(file);event.target.value="";});
@@ -1125,6 +1290,7 @@ function bindEvents(){
 
 function initializeSheet(){
   loadState();
+  renderPortrait();
   renderAbilities();
   renderSkills();
   renderAttacks();
