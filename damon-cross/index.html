@@ -1,0 +1,1026 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1917">
+<title>Damon Cross — Interactive Character Dossier</title>
+<style>
+  :root{
+    --paper:#eee8dc;
+    --paper-deep:#e3dac8;
+    --card:#faf7ef;
+    --card-strong:#fffdf8;
+    --ink:#211d19;
+    --muted:#72685d;
+    --faint:#a79b8c;
+    --line:#cfc4b3;
+    --line-soft:#e8dfd1;
+    --red:#7b2d2d;
+    --red-dark:#552020;
+    --red-soft:#efe0dc;
+    --gold:#8d6e32;
+    --gold-soft:#efe6cf;
+    --green:#38643d;
+    --green-soft:#dce9dc;
+    --black:#171513;
+    --white:#fff;
+    --shadow:0 12px 32px rgba(44,34,24,.10);
+    --radius:12px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    min-width:320px;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 85% -20%, rgba(123,45,45,.10), transparent 38rem),
+      linear-gradient(180deg,var(--paper),#f5f0e7 34rem,var(--paper));
+    font:14px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  button,input,textarea,select{font:inherit}
+  button{color:inherit}
+  .shell{max-width:1240px;margin:0 auto;padding:18px 18px 56px}
+
+  .masthead{
+    position:relative;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:22px;
+    align-items:end;
+    padding:22px 24px;
+    color:#f7f1e7;
+    background:var(--black);
+    border:1px solid #28231f;
+    border-left:8px solid var(--red);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .masthead::after{
+    content:"";
+    position:absolute;
+    width:260px;height:260px;
+    right:-120px;top:-155px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:50%;
+    box-shadow:0 0 0 26px rgba(255,255,255,.025),0 0 0 52px rgba(255,255,255,.018);
+    pointer-events:none;
+  }
+  .eyebrow{font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#cdbb98}
+  .masthead h1{margin:6px 0 0;font:700 clamp(26px,4vw,40px)/1 Georgia,"Times New Roman",serif;letter-spacing:-.025em}
+  .masthead .subtitle{margin-top:8px;color:#bdb3a6;font-size:12px}
+  .identity-mark{position:relative;z-index:1;text-align:right;min-width:280px}
+  .identity-mark strong{display:block;color:#e4a5a1;font-size:15px;letter-spacing:.055em;text-transform:uppercase}
+  .identity-mark span{display:block;margin-top:4px;color:#a89e92;font-size:12px}
+
+  .roll-console{
+    position:sticky;
+    top:0;
+    z-index:50;
+    display:grid;
+    grid-template-columns:minmax(250px,1fr) auto auto;
+    gap:14px;
+    align-items:center;
+    margin:12px 0 0;
+    padding:11px 14px;
+    color:#f5eee3;
+    background:rgba(23,21,19,.97);
+    border:1px solid #322c27;
+    border-left:8px solid var(--red);
+    border-radius:10px;
+    box-shadow:0 12px 28px rgba(0,0,0,.19);
+    backdrop-filter:blur(10px);
+  }
+  .result{display:grid;grid-template-columns:86px minmax(0,1fr);gap:12px;align-items:center;min-width:0}
+  .result>div:last-child{min-width:0}
+  .result-number{
+    display:grid;place-items:center;
+    min-height:58px;
+    border:1px solid #4d443c;
+    border-radius:8px;
+    background:#0d0c0b;
+    font:800 34px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .result-number.nat20{color:#efcf7e;border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+  .result-number.nat1{color:#d99898;border-color:#8c3b3b;box-shadow:inset 0 0 0 1px #8c3b3b}
+  .result-label{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#e4a5a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .result-detail{margin-top:3px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a99e91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .mode-group,.quick-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .toggle,.icon-btn,.small-btn,.action-btn,.die-btn,.step-btn,.rest-btn{
+    border:1px solid #4a423b;
+    border-radius:999px;
+    background:#26221e;
+    color:#d2c8bc;
+    cursor:pointer;
+    transition:transform .08s ease,background .12s ease,border-color .12s ease,color .12s ease;
+  }
+  .toggle{padding:7px 11px;font-size:11px;font-weight:700;letter-spacing:.03em}
+  .toggle:hover,.icon-btn:hover{border-color:#91615e;color:#fff}
+  .toggle:active,.icon-btn:active,.small-btn:active,.action-btn:active,.die-btn:active,.step-btn:active,.rest-btn:active{transform:translateY(1px)}
+  .toggle[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+  .toggle.positive[aria-pressed="true"]{background:var(--green);border-color:var(--green)}
+  .toggle.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+  .icon-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:800}
+
+  .dashboard{display:grid;grid-template-columns:290px minmax(0,1fr) 330px;gap:14px;margin-top:14px;align-items:start}
+  .column{display:grid;gap:14px;min-width:0}
+  .panel{
+    overflow:hidden;
+    background:rgba(250,247,239,.96);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 8px 22px rgba(50,40,28,.055);
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-height:40px;
+    padding:9px 13px;
+    color:#fff;
+    background:var(--red);
+  }
+  .panel-head h2{margin:0;font-size:11px;letter-spacing:.11em;text-transform:uppercase}
+  .panel-head small{font-size:10px;color:#f0d5d2}
+  .panel-body{padding:13px}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .field-grid .span-2{grid-column:1/-1}
+  .field label,.note-label{display:block;margin-bottom:4px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+  .field input,.field textarea,.field select,.notes-area{
+    width:100%;
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:var(--card-strong);
+    color:var(--ink);
+    padding:8px 9px;
+  }
+  .field textarea,.notes-area{resize:vertical;min-height:72px}
+  .field input:focus,.field textarea:focus,.field select:focus,.notes-area:focus{outline:2px solid rgba(141,110,50,.55);outline-offset:1px;border-color:var(--gold)}
+
+  .ability-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .ability{
+    position:relative;
+    text-align:center;
+    padding:9px 5px 8px;
+    background:linear-gradient(180deg,var(--card-strong),var(--paper));
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .ability-name{color:var(--red);font-size:9px;font-weight:900;letter-spacing:.08em}
+  .ability-score{margin-top:3px;font:700 24px/1 Georgia,"Times New Roman",serif}
+  .ability-mod{
+    display:inline-grid;place-items:center;
+    min-width:50px;
+    margin-top:7px;padding:3px 8px;
+    border:1px solid var(--line);border-radius:999px;
+    background:#fff;
+    font:800 14px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace;
+    cursor:pointer;
+  }
+  .ability-mod:hover{background:var(--red);border-color:var(--red);color:#fff}
+  .save-btn{
+    width:100%;margin-top:6px;padding:4px 3px;
+    border:0;border-radius:6px;
+    background:transparent;color:var(--muted);
+    font-size:9px;font-weight:800;letter-spacing:.04em;
+    cursor:pointer;
+  }
+  .save-btn.prof{background:var(--red-soft);color:var(--red)}
+  .save-btn:hover{background:var(--red);color:#fff}
+
+  .vital-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .vital{
+    min-height:67px;
+    padding:8px 5px;
+    text-align:center;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:var(--card-strong);
+  }
+  .vital.rollable{cursor:pointer}
+  .vital.rollable:hover{border-color:var(--red);background:#fff}
+  .vital-label{font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .vital-value{margin-top:5px;font:700 21px/1 Georgia,"Times New Roman",serif}
+
+  .hp-card{margin-top:9px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--card-strong)}
+  .hp-top{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+  .hp-title{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+  .hp-readout{font:800 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .temp-hp{font-size:11px;color:var(--muted)}
+  .hp-bar{height:10px;margin-top:9px;border-radius:999px;background:#e5ddd1;overflow:hidden}
+  .hp-fill{height:100%;width:100%;background:var(--green);transition:width .18s ease,background .18s ease}
+  .hp-controls{display:grid;grid-template-columns:36px 1fr 36px;gap:7px;margin-top:10px}
+  .hp-controls input{text-align:center;width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .step-btn{height:34px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:18px}
+  .hp-tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:8px}
+  .small-btn{padding:7px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:11px;font-weight:800}
+  .small-btn:hover{border-color:var(--red);background:#fff}
+  .mini-input{width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;padding:6px 7px;text-align:center}
+
+  .resource-row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .resource-row:last-child{border-bottom:0;padding-bottom:0}
+  .resource-row:first-child{padding-top:0}
+  .resource-name{font-weight:800;font-size:12px}
+  .resource-note{font-size:10px;color:var(--muted)}
+  .pips{display:flex;gap:5px}
+  .pip{width:22px;height:22px;border:1px solid var(--line);border-radius:50%;background:#fff;cursor:pointer}
+  .pip[aria-pressed="true"]{background:var(--red);border-color:var(--red);box-shadow:inset 0 0 0 4px #fff}
+  .pip.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+
+  .skill-list{display:grid;grid-template-columns:1fr}
+  .skill-row{
+    display:grid;
+    grid-template-columns:18px minmax(0,1fr) 42px;
+    gap:8px;
+    align-items:center;
+    min-height:35px;
+    padding:5px 4px;
+    border-bottom:1px solid var(--line-soft);
+    cursor:pointer;
+  }
+  .skill-row:hover{background:#fff}
+  .skill-row:last-child{border-bottom-color:transparent}
+  .prof-dot{
+    width:11px;height:11px;margin:auto;
+    border:1.5px solid var(--faint);
+    border-radius:50%;
+    background:transparent;
+  }
+  .prof-dot.prof{border-color:var(--red);background:var(--red);box-shadow:inset 0 0 0 2.5px var(--card-strong)}
+  .prof-dot.expertise{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 2.5px var(--card-strong),0 0 0 1px var(--gold)}
+  .skill-name{min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .skill-ability{margin-left:5px;color:var(--faint);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .skill-mod{
+    width:42px;
+    text-align:right;
+    color:var(--red);
+    font:800 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .skill-row.expertise .skill-mod{color:var(--gold)}
+  .legend{display:flex;gap:14px;align-items:center;margin-bottom:6px;color:var(--muted);font-size:10px}
+  .legend span{display:flex;gap:5px;align-items:center}
+  .legend .prof-dot{margin:0}
+
+  .attack-card{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card-strong)}
+  .attack-card+.attack-card{margin-top:9px}
+  .attack-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .attack-name{font-weight:900;font-size:13px}
+  .attack-bonus{flex:0 0 auto;min-width:44px;text-align:right;color:var(--red);font:900 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .attack-meta{margin-top:3px;color:var(--muted);font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .attack-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+  .action-btn{padding:8px 9px;border-radius:7px;background:var(--red);border-color:var(--red);color:#fff;font-size:11px;font-weight:900}
+  .action-btn.secondary{background:var(--black);border-color:var(--black)}
+  .action-btn:hover{filter:brightness(.92)}
+
+  .dice-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .die-btn{min-width:0;padding:9px 2px;border-radius:8px;background:var(--paper);border-color:var(--line);color:var(--ink);font:800 13px/1 Georgia,"Times New Roman",serif}
+  .die-btn:hover{background:#fff;border-color:var(--red)}
+  .dice-options{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .counter{display:grid;grid-template-columns:28px 1fr 28px;gap:5px;align-items:center}
+  .counter button{height:28px;border:1px solid var(--line);border-radius:7px;background:var(--paper);cursor:pointer}
+  .counter output{text-align:center;font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .counter-label{text-align:center;margin-bottom:4px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+
+  .feature{padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .feature:last-child{border-bottom:0;padding-bottom:0}
+  .feature:first-child{padding-top:0}
+  .feature h3{margin:0;color:var(--red);font-size:12px}
+  .feature p{margin:3px 0 0;font-size:11.5px;color:#453d35}
+
+  .condition-list{display:flex;gap:6px;flex-wrap:wrap}
+  .condition{
+    border:1px solid var(--line);border-radius:999px;background:var(--card-strong);padding:6px 9px;
+    color:var(--muted);font-size:10px;font-weight:800;cursor:pointer;
+  }
+  .condition[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+
+  .death-saves{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .save-track label{display:block;margin-bottom:6px;font-size:9px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .save-track.success label{color:var(--green)}
+  .save-track.failure label{color:var(--red)}
+
+  .log-list{list-style:none;margin:0;padding:0;max-height:295px;overflow:auto}
+  .log-item{padding:8px 12px;border-bottom:1px solid var(--line-soft);background:transparent}
+  .log-item:first-child{background:#f2eadb}
+  .log-top{display:flex;justify-content:space-between;gap:9px}
+  .log-name{font-size:11px;font-weight:900}
+  .log-total{color:var(--red);font:900 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .log-detail{margin-top:2px;color:var(--muted);font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .empty-log{padding:18px;text-align:center;color:var(--muted);font-size:11px}
+
+  .notes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .notes-grid .wide{grid-column:1/-1}
+
+  .utility-bar{display:flex;gap:7px;flex-wrap:wrap}
+  .rest-btn{padding:7px 9px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:10px;font-weight:800}
+  .rest-btn:hover{border-color:var(--red);background:#fff}
+  .save-state{margin-left:auto;color:var(--muted);font-size:10px;align-self:center}
+
+  footer{margin-top:18px;text-align:center;color:var(--muted);font-size:10px;font-style:italic}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  @keyframes stamp{0%{transform:scale(1.18) rotate(-2deg);opacity:.25}100%{transform:scale(1) rotate(0);opacity:1}}
+  .stamp{animation:stamp .22s cubic-bezier(.2,1.3,.4,1)}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.stamp{animation:none}}
+
+  @media(max-width:1040px){
+    .dashboard{grid-template-columns:280px minmax(0,1fr)}
+    .column.right{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .column.right .panel:last-child{grid-column:1/-1}
+    .roll-console{grid-template-columns:minmax(230px,1fr) auto}
+    .quick-actions{grid-column:1/-1}
+  }
+  @media(max-width:760px){
+    .shell{padding:10px 10px 40px}
+    .masthead{grid-template-columns:1fr;padding:18px}
+    .identity-mark{text-align:left;min-width:0}
+    .roll-console{position:relative;grid-template-columns:1fr;padding:10px;border-left-width:6px}
+    .mode-group,.quick-actions{justify-content:flex-start}
+    .dashboard{grid-template-columns:1fr}
+    .column.right{grid-column:auto;grid-template-columns:1fr}
+    .column.right .panel:last-child{grid-column:auto}
+    .skill-row:last-child{border-bottom:0}
+  }
+  @media(max-width:430px){
+    .masthead h1{font-size:28px}
+    .result{grid-template-columns:74px 1fr}
+    .result-number{min-height:52px;font-size:30px}
+    .field-grid,.notes-grid{grid-template-columns:1fr}
+    .field-grid .span-2,.notes-grid .wide{grid-column:auto}
+    .ability-grid{grid-template-columns:repeat(2,1fr)}
+    .dice-grid{grid-template-columns:repeat(4,1fr)}
+    .toggle{padding:7px 9px}
+  }
+
+  @media print{
+    body{background:#fff}
+    .shell{max-width:none;padding:0}
+    .roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
+    .masthead,.panel{box-shadow:none;break-inside:avoid}
+    .dashboard{grid-template-columns:1fr 1.25fr 1fr;gap:8px}
+    .column{gap:8px}
+    .panel-head{background:#333!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .panel-body{padding:9px}
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">The Ironspine · Vermillion Bureau · Casefile 001</div>
+      <h1>Interactive Character Dossier</h1>
+      <div class="subtitle">Offline character sheet · local autosave · keyboard accessible</div>
+    </div>
+    <div class="identity-mark">
+      <strong id="headerName">Damon Cross — The Fixer</strong>
+      <span id="headerClass">Rogue (Mastermind) 3 · Bureau Detective · Proficiency +2</span>
+    </div>
+  </header>
+
+  <section class="roll-console" aria-label="Roll console">
+    <div class="result" aria-live="polite">
+      <div class="result-number" id="resultNumber">—</div>
+      <div>
+        <div class="result-label" id="resultLabel">Ready</div>
+        <div class="result-detail" id="resultDetail">Select a check, save, skill, attack, or die.</div>
+      </div>
+    </div>
+    <div class="mode-group" aria-label="Roll modes">
+      <button type="button" class="toggle positive" id="advToggle" aria-pressed="false">Advantage</button>
+      <button type="button" class="toggle" id="disToggle" aria-pressed="false">Disadvantage</button>
+      <button type="button" class="toggle" id="sneakToggle" aria-pressed="false">Sneak +2d6</button>
+      <button type="button" class="toggle gold" id="critToggle" aria-pressed="false">Critical</button>
+    </div>
+    <div class="quick-actions">
+      <button type="button" class="icon-btn" id="undoRoll" title="Remove latest roll" aria-label="Remove latest roll">↶</button>
+      <button type="button" class="icon-btn" id="clearRolls" title="Clear roll log" aria-label="Clear roll log">×</button>
+    </div>
+  </section>
+
+  <div class="dashboard">
+    <div class="column left">
+      <section class="panel">
+        <div class="panel-head"><h2>Identity</h2><small>editable</small></div>
+        <div class="panel-body">
+          <div class="field-grid">
+            <div class="field span-2"><label for="charName">Name</label><input id="charName" data-save value="Damon Cross"></div>
+            <div class="field"><label for="charClass">Class</label><input id="charClass" data-save value="Rogue (Mastermind)"></div>
+            <div class="field"><label for="charLevel">Level</label><input id="charLevel" data-save type="number" min="1" max="20" value="3"></div>
+            <div class="field"><label for="charBackground">Background</label><input id="charBackground" data-save value="Bureau Detective"></div>
+            <div class="field"><label for="charSpecies">Species</label><input id="charSpecies" data-save placeholder="Fill in"></div>
+            <div class="field"><label for="charAlignment">Alignment</label><input id="charAlignment" data-save placeholder="Fill in"></div>
+            <div class="field"><label for="charPlayer">Played by</label><input id="charPlayer" data-save placeholder="Fill in"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Ability Scores</h2><small>modifier · save</small></div>
+        <div class="panel-body"><div class="ability-grid" id="abilityGrid"></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Resources</h2><small>click to mark used</small></div>
+        <div class="panel-body">
+          <div class="resource-row">
+            <div><div class="resource-name">Inspiration</div><div class="resource-note">Player inspiration</div></div>
+            <div class="pips" data-resource="inspiration" data-count="1"></div>
+          </div>
+          <div class="resource-row">
+            <div><div class="resource-name">Hit Dice</div><div class="resource-note">3d8 available</div></div>
+            <div class="pips" data-resource="hitDice" data-count="3"></div>
+          </div>
+          <div class="resource-row">
+            <div><div class="resource-name">Sneak Attack</div><div class="resource-note">Refreshes each turn</div></div>
+            <div class="pips" data-resource="sneakUsed" data-count="1"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Conditions</h2><small>session tracker</small></div>
+        <div class="panel-body"><div class="condition-list" id="conditionList"></div></div>
+      </section>
+    </div>
+
+    <div class="column center">
+      <section class="panel">
+        <div class="panel-head"><h2>Vitals</h2><small>combat-ready</small></div>
+        <div class="panel-body">
+          <div class="vital-grid">
+            <div class="vital"><div class="vital-label">Armor Class</div><div class="vital-value">15</div></div>
+            <button type="button" class="vital rollable" id="initiativeRoll"><div class="vital-label">Initiative</div><div class="vital-value">+3</div></button>
+            <div class="vital"><div class="vital-label">Speed</div><div class="vital-value">30 ft</div></div>
+            <div class="vital"><div class="vital-label">Proficiency</div><div class="vital-value">+2</div></div>
+            <div class="vital"><div class="vital-label">Hit Dice</div><div class="vital-value">3d8</div></div>
+            <div class="vital"><div class="vital-label">Passive Perception</div><div class="vital-value">13</div></div>
+          </div>
+
+          <div class="hp-card">
+            <div class="hp-top">
+              <div class="hp-title">Hit Points</div>
+              <div class="hp-readout"><span id="hpCurrentLabel">24</span>/<span id="hpMaxLabel">24</span></div>
+              <div class="temp-hp">Temp <strong id="tempHpLabel">0</strong></div>
+            </div>
+            <div class="hp-bar" aria-hidden="true"><div class="hp-fill" id="hpFill"></div></div>
+            <div class="hp-controls">
+              <button type="button" class="step-btn" id="hpMinus" aria-label="Decrease hit points">−</button>
+              <input id="hpCurrent" data-save type="number" min="0" value="24" aria-label="Current hit points">
+              <button type="button" class="step-btn" id="hpPlus" aria-label="Increase hit points">+</button>
+            </div>
+            <div class="hp-tools">
+              <div><label class="sr-only" for="hpAmount">HP amount</label><input class="mini-input" id="hpAmount" type="number" min="0" value="1"></div>
+              <button type="button" class="small-btn" id="damageBtn">Damage</button>
+              <button type="button" class="small-btn" id="healBtn">Heal</button>
+            </div>
+            <div class="hp-tools">
+              <div><label class="sr-only" for="hpMax">Maximum HP</label><input class="mini-input" id="hpMax" data-save type="number" min="1" value="24" title="Maximum hit points"></div>
+              <div><label class="sr-only" for="tempHp">Temporary HP</label><input class="mini-input" id="tempHp" data-save type="number" min="0" value="0" title="Temporary hit points"></div>
+              <button type="button" class="small-btn" id="fullHealBtn">Full Heal</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Skills</h2><small>all modifiers aligned</small></div>
+        <div class="panel-body">
+          <div class="legend" aria-label="Skill proficiency legend">
+            <span><i class="prof-dot"></i>Untrained</span>
+            <span><i class="prof-dot prof"></i>Proficient</span>
+            <span><i class="prof-dot expertise"></i>Expertise</span>
+          </div>
+          <div class="skill-list" id="skillList"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Attacks & Damage</h2><small>roll modes apply</small></div>
+        <div class="panel-body" id="attackList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Dice Tray</h2><small>free rolls</small></div>
+        <div class="panel-body">
+          <div class="dice-grid" id="diceGrid"></div>
+          <div class="dice-options">
+            <div><div class="counter-label">Quantity</div><div class="counter"><button type="button" data-counter="qty" data-delta="-1">−</button><output id="qtyOutput">1</output><button type="button" data-counter="qty" data-delta="1">+</button></div></div>
+            <div><div class="counter-label">Modifier</div><div class="counter"><button type="button" data-counter="mod" data-delta="-1">−</button><output id="modOutput">+0</output><button type="button" data-counter="mod" data-delta="1">+</button></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="column right">
+      <section class="panel">
+        <div class="panel-head"><h2>Death Saves</h2><small>click to mark</small></div>
+        <div class="panel-body">
+          <div class="death-saves">
+            <div class="save-track success"><label>Successes</label><div class="pips" data-resource="deathSuccess" data-count="3"></div></div>
+            <div class="save-track failure"><label>Failures</label><div class="pips" data-resource="deathFailure" data-count="3"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Features & Traits</h2><small>level 3</small></div>
+        <div class="panel-body">
+          <div class="feature"><h3>Expertise</h3><p>Double proficiency for Deception and Insight. The listed modifiers already include it.</p></div>
+          <div class="feature"><h3>Sneak Attack · 2d6</h3><p>Once per turn with advantage, or with an ally within 5 feet and no disadvantage. Finesse or ranged weapon required.</p></div>
+          <div class="feature"><h3>Cunning Action</h3><p>Dash, Disengage, or Hide as a bonus action.</p></div>
+          <div class="feature"><h3>Master of Intrigue</h3><p>Disguise kit, forgery kit, gaming set; mimic speech or accent after one minute; parse a heard language.</p></div>
+          <div class="feature"><h3>Master of Tactics</h3><p>Use Help as a bonus action at a range of up to 30 feet.</p></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Proficiencies & Gear</h2><small>editable notes</small></div>
+        <div class="panel-body">
+          <div class="field"><label for="languages">Languages</label><input id="languages" data-save value="Common, Thieves' Cant"></div>
+          <div class="feature"><h3>Armor & Weapons</h3><p>Light armor; simple weapons; hand crossbows; longswords; rapiers; shortswords.</p></div>
+          <div class="feature"><h3>Tools</h3><p>Thieves’ tools, disguise kit, forgery kit, dice.</p></div>
+          <div class="field" style="margin-top:10px"><label for="equipment">Equipment</label><textarea id="equipment" data-save>Reinforced longcoat (studded leather, AC 15) · sword-cane (rapier) · snub revolver (hand crossbow) +20 rounds · two boot knives (daggers) · thieves' tools · disguise kit · forgery kit · marked deck/dice · Bureau badge and credentials · little black book of contacts · notebook</textarea></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Roll Log</h2><small id="logCount">0 rolls</small></div>
+        <div class="panel-body" style="padding:0"><ul class="log-list" id="rollLog"><li class="empty-log">No rolls yet.</li></ul></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:14px">
+    <div class="panel-head"><h2>Personality & Case Notes</h2><small>autosaved locally</small></div>
+    <div class="panel-body">
+      <div class="notes-grid">
+        <div><label class="note-label" for="traits">Personality Traits</label><textarea class="notes-area" id="traits" data-save></textarea></div>
+        <div><label class="note-label" for="ideals">Ideals</label><textarea class="notes-area" id="ideals" data-save></textarea></div>
+        <div><label class="note-label" for="bonds">Bonds</label><textarea class="notes-area" id="bonds" data-save></textarea></div>
+        <div><label class="note-label" for="flaws">Flaws</label><textarea class="notes-area" id="flaws" data-save></textarea></div>
+        <div class="wide"><label class="note-label" for="caseNotes">Case Notes / Backstory</label><textarea class="notes-area" id="caseNotes" data-save style="min-height:105px"></textarea></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:14px">
+    <div class="panel-body utility-bar">
+      <button type="button" class="rest-btn" id="shortRest">Short Rest</button>
+      <button type="button" class="rest-btn" id="longRest">Long Rest</button>
+      <button type="button" class="rest-btn" id="exportState">Export Save</button>
+      <button type="button" class="rest-btn" id="importState">Import Save</button>
+      <button type="button" class="rest-btn" id="printSheet">Print</button>
+      <button type="button" class="rest-btn" id="resetSheet">Reset Sheet</button>
+      <span class="save-state" id="saveState">Saved locally</span>
+      <input type="file" id="importFile" accept="application/json" hidden>
+    </div>
+  </section>
+
+  <footer>“Everything runs through someone. He finds the someone.” — Damon Cross character dossier</footer>
+</main>
+
+<script>
+"use strict";
+
+const CHARACTER = {
+  abilities: [
+    {name:"STR",score:10,mod:0,save:0,saveProf:false},
+    {name:"DEX",score:16,mod:3,save:5,saveProf:true},
+    {name:"CON",score:14,mod:2,save:2,saveProf:false},
+    {name:"INT",score:13,mod:1,save:3,saveProf:true},
+    {name:"WIS",score:12,mod:1,save:1,saveProf:false},
+    {name:"CHA",score:15,mod:2,save:2,saveProf:false}
+  ],
+  skills: [
+    {name:"Acrobatics",ability:"DEX",mod:3,rank:0},
+    {name:"Animal Handling",ability:"WIS",mod:1,rank:0},
+    {name:"Arcana",ability:"INT",mod:1,rank:0},
+    {name:"Athletics",ability:"STR",mod:0,rank:0},
+    {name:"Deception",ability:"CHA",mod:6,rank:2},
+    {name:"History",ability:"INT",mod:1,rank:0},
+    {name:"Insight",ability:"WIS",mod:5,rank:2},
+    {name:"Intimidation",ability:"CHA",mod:2,rank:0},
+    {name:"Investigation",ability:"INT",mod:3,rank:1},
+    {name:"Medicine",ability:"WIS",mod:1,rank:0},
+    {name:"Nature",ability:"INT",mod:1,rank:0},
+    {name:"Perception",ability:"WIS",mod:3,rank:1},
+    {name:"Performance",ability:"CHA",mod:2,rank:0},
+    {name:"Persuasion",ability:"CHA",mod:2,rank:0},
+    {name:"Religion",ability:"INT",mod:1,rank:0},
+    {name:"Sleight of Hand",ability:"DEX",mod:5,rank:1},
+    {name:"Stealth",ability:"DEX",mod:5,rank:1},
+    {name:"Survival",ability:"WIS",mod:1,rank:0}
+  ],
+  attacks: [
+    {name:'Rapier “Sword-Cane”',hit:5,damage:[[1,8]],mod:3,type:"piercing",note:"Finesse · melee"},
+    {name:'Hand Crossbow “Snub Revolver”',hit:5,damage:[[1,6]],mod:3,type:"piercing",note:"Range 30/120 · light"},
+    {name:'Dagger “Boot Knife”',hit:5,damage:[[1,4]],mod:3,type:"piercing",note:"Finesse · thrown 20/60"}
+  ],
+  conditions:["Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated","Invisible","Paralyzed","Poisoned","Prone","Restrained","Stunned"]
+};
+
+const STORAGE_KEY = "damon-cross-sheet-v2";
+let storageEnabled = true;
+function readStorage(){
+  try{return localStorage.getItem(STORAGE_KEY);}catch(error){storageEnabled=false;return null;}
+}
+function writeStorage(value){
+  try{localStorage.setItem(STORAGE_KEY,value);return true;}catch(error){storageEnabled=false;return false;}
+}
+function clearStorage(){
+  try{localStorage.removeItem(STORAGE_KEY);}catch(error){storageEnabled=false;}
+}
+const DEFAULTS = {
+  hpCurrent:24,hpMax:24,tempHp:0,
+  resources:{inspiration:[false],hitDice:[false,false,false],sneakUsed:[false],deathSuccess:[false,false,false],deathFailure:[false,false,false]},
+  conditions:[],rolls:[]
+};
+
+const mode = {adv:false,dis:false,sneak:false,crit:false};
+let trayQty = 1;
+let trayMod = 0;
+let state = structuredClone(DEFAULTS);
+
+const $ = selector => document.querySelector(selector);
+const $$ = selector => [...document.querySelectorAll(selector)];
+const sign = n => `${n >= 0 ? "+" : ""}${n}`;
+const rollDie = sides => Math.floor(Math.random() * sides) + 1;
+const clamp = (n,min,max) => Math.min(max,Math.max(min,n));
+
+function d20(){
+  if(mode.adv || mode.dis){
+    const a=rollDie(20), b=rollDie(20);
+    const natural=mode.adv?Math.max(a,b):Math.min(a,b);
+    return {natural,detail:`d20 [${a}, ${b}] → ${natural} ${mode.adv?"adv":"dis"}`};
+  }
+  const natural=rollDie(20);
+  return {natural,detail:`d20 [${natural}]`};
+}
+
+function setResult(label,total,detail,natural=0){
+  const number=$("#resultNumber");
+  number.textContent=total;
+  number.className="result-number";
+  if(natural===20) number.classList.add("nat20");
+  if(natural===1) number.classList.add("nat1");
+  number.classList.remove("stamp");
+  void number.offsetWidth;
+  number.classList.add("stamp");
+  $("#resultLabel").textContent=label;
+  $("#resultDetail").textContent=detail;
+  state.rolls.unshift({label,total,detail,time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});
+  state.rolls=state.rolls.slice(0,40);
+  renderLog();
+  saveState();
+}
+
+function rollCheck(label,bonus){
+  const r=d20();
+  setResult(label,r.natural+bonus,`${r.detail} ${sign(bonus)}`,r.natural);
+}
+
+function rollAttack(attack){
+  const r=d20();
+  let suffix="";
+  if(r.natural===20) suffix=" · natural 20";
+  if(r.natural===1) suffix=" · natural 1";
+  setResult(`${attack.name} · attack`,r.natural+attack.hit,`${r.detail} ${sign(attack.hit)}${suffix}`,r.natural);
+}
+
+function rollDamage(attack){
+  const groups=attack.damage.map(([count,sides])=>({count,sides,label:"weapon"}));
+  if(mode.sneak) groups.push({count:2,sides:6,label:"sneak"});
+  let total=0;
+  const details=[];
+  groups.forEach(group=>{
+    const count=mode.crit?group.count*2:group.count;
+    const rolls=Array.from({length:count},()=>rollDie(group.sides));
+    total+=rolls.reduce((a,b)=>a+b,0);
+    details.push(`${count}d${group.sides} [${rolls.join(", ")}]${group.label==="sneak"?" SA":""}`);
+  });
+  total+=attack.mod;
+  setResult(`${attack.name} · damage${mode.crit?" CRIT":""}`,total,`${details.join(" + ")} ${sign(attack.mod)}`);
+}
+
+function rollTray(sides){
+  if(sides===20 && trayQty===1 && (mode.adv || mode.dis)){
+    const r=d20();
+    setResult(`d20 ${sign(trayMod)}`,r.natural+trayMod,`${r.detail} ${sign(trayMod)}`,r.natural);
+    return;
+  }
+  const rolls=Array.from({length:trayQty},()=>rollDie(sides));
+  const total=rolls.reduce((a,b)=>a+b,0)+trayMod;
+  const natural=sides===20&&trayQty===1?rolls[0]:0;
+  setResult(`${trayQty}d${sides}${trayMod?sign(trayMod):""}`,total,`[${rolls.join(", ")}]${trayMod?` ${sign(trayMod)}`:""}`,natural);
+}
+
+function renderAbilities(){
+  const grid=$("#abilityGrid");
+  CHARACTER.abilities.forEach(a=>{
+    const el=document.createElement("article");
+    el.className="ability";
+    el.innerHTML=`
+      <div class="ability-name">${a.name}</div>
+      <div class="ability-score">${a.score}</div>
+      <button type="button" class="ability-mod" aria-label="Roll ${a.name} check">${sign(a.mod)}</button>
+      <button type="button" class="save-btn ${a.saveProf?"prof":""}" aria-label="Roll ${a.name} save">SAVE ${sign(a.save)}</button>`;
+    el.querySelector(".ability-mod").addEventListener("click",()=>rollCheck(`${a.name} check`,a.mod));
+    el.querySelector(".save-btn").addEventListener("click",()=>rollCheck(`${a.name} save`,a.save));
+    grid.appendChild(el);
+  });
+}
+
+function renderSkills(){
+  const list=$("#skillList");
+  CHARACTER.skills.forEach(skill=>{
+    const row=document.createElement("div");
+    row.className=`skill-row ${skill.rank===2?"expertise":""}`;
+    row.setAttribute("role","button");
+    row.setAttribute("tabindex","0");
+    row.setAttribute("aria-label",`Roll ${skill.name} ${sign(skill.mod)}`);
+    const dotClass=skill.rank===2?"expertise":skill.rank===1?"prof":"";
+    row.innerHTML=`
+      <i class="prof-dot ${dotClass}" aria-hidden="true"></i>
+      <span class="skill-name">${skill.name}<small class="skill-ability">${skill.ability}</small></span>
+      <strong class="skill-mod">${sign(skill.mod)}</strong>`;
+    const roll=()=>rollCheck(skill.name,skill.mod);
+    row.addEventListener("click",roll);
+    row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();roll();}});
+    list.appendChild(row);
+  });
+}
+
+function renderAttacks(){
+  const list=$("#attackList");
+  CHARACTER.attacks.forEach(attack=>{
+    const damageText=attack.damage.map(([count,sides])=>`${count}d${sides}`).join("+")+sign(attack.mod);
+    const card=document.createElement("article");
+    card.className="attack-card";
+    card.innerHTML=`
+      <div class="attack-top"><div><div class="attack-name">${attack.name}</div><div class="attack-meta">${damageText} ${attack.type} · ${attack.note}</div></div><div class="attack-bonus">${sign(attack.hit)}</div></div>
+      <div class="attack-actions"><button type="button" class="action-btn">Attack</button><button type="button" class="action-btn secondary">Damage</button></div>`;
+    const [attackBtn,damageBtn]=card.querySelectorAll("button");
+    attackBtn.addEventListener("click",()=>rollAttack(attack));
+    damageBtn.addEventListener("click",()=>rollDamage(attack));
+    list.appendChild(card);
+  });
+}
+
+function renderDice(){
+  [4,6,8,10,12,20,100].forEach(sides=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="die-btn";
+    btn.textContent=`d${sides}`;
+    btn.addEventListener("click",()=>rollTray(sides));
+    $("#diceGrid").appendChild(btn);
+  });
+}
+
+function renderConditions(){
+  const list=$("#conditionList");
+  CHARACTER.conditions.forEach(name=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="condition";
+    btn.textContent=name;
+    btn.setAttribute("aria-pressed",state.conditions.includes(name));
+    btn.addEventListener("click",()=>{
+      const active=btn.getAttribute("aria-pressed")==="true";
+      btn.setAttribute("aria-pressed",String(!active));
+      state.conditions=active?state.conditions.filter(c=>c!==name):[...state.conditions,name];
+      saveState();
+    });
+    list.appendChild(btn);
+  });
+}
+
+function renderResources(){
+  $$('[data-resource]').forEach(container=>{
+    const key=container.dataset.resource;
+    const count=Number(container.dataset.count);
+    if(!Array.isArray(state.resources[key])||state.resources[key].length!==count){
+      state.resources[key]=Array(count).fill(false);
+    }
+    container.innerHTML="";
+    for(let i=0;i<count;i++){
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.className=`pip ${key==="inspiration"?"gold":""}`;
+      btn.setAttribute("aria-label",`${key} ${i+1}`);
+      btn.setAttribute("aria-pressed",String(state.resources[key][i]));
+      btn.addEventListener("click",()=>{
+        state.resources[key][i]=!state.resources[key][i];
+        btn.setAttribute("aria-pressed",String(state.resources[key][i]));
+        saveState();
+      });
+      container.appendChild(btn);
+    }
+  });
+}
+
+function renderLog(){
+  const log=$("#rollLog");
+  $("#logCount").textContent=`${state.rolls.length} ${state.rolls.length===1?"roll":"rolls"}`;
+  if(!state.rolls.length){log.innerHTML='<li class="empty-log">No rolls yet.</li>';return;}
+  log.innerHTML=state.rolls.map(item=>`
+    <li class="log-item">
+      <div class="log-top"><span class="log-name">${escapeHtml(item.label)}</span><span class="log-total">${escapeHtml(String(item.total))}</span></div>
+      <div class="log-detail">${escapeHtml(item.detail)} · ${escapeHtml(item.time||"")}</div>
+    </li>`).join("");
+}
+
+function escapeHtml(value){
+  return value.replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+}
+
+function updateHp(){
+  const current=clamp(Number($("#hpCurrent").value)||0,0,999);
+  const max=clamp(Number($("#hpMax").value)||1,1,999);
+  const temp=clamp(Number($("#tempHp").value)||0,0,999);
+  state.hpCurrent=current;state.hpMax=max;state.tempHp=temp;
+  $("#hpCurrent").value=current;
+  $("#hpMax").value=max;
+  $("#tempHp").value=temp;
+  $("#hpCurrentLabel").textContent=current;
+  $("#hpMaxLabel").textContent=max;
+  $("#tempHpLabel").textContent=temp;
+  const pct=clamp((current/max)*100,0,100);
+  const fill=$("#hpFill");
+  fill.style.width=`${pct}%`;
+  fill.style.background=pct<=25?"var(--red)":pct<=50?"var(--gold)":"var(--green)";
+  saveState();
+}
+
+function applyDamage(amount){
+  let remaining=Math.max(0,amount);
+  const temp=Number($("#tempHp").value)||0;
+  if(temp>0){
+    const absorbed=Math.min(temp,remaining);
+    $("#tempHp").value=temp-absorbed;
+    remaining-=absorbed;
+  }
+  if(remaining>0) $("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-remaining);
+  updateHp();
+}
+
+function applyHeal(amount){
+  const max=Number($("#hpMax").value)||1;
+  $("#hpCurrent").value=Math.min(max,(Number($("#hpCurrent").value)||0)+Math.max(0,amount));
+  updateHp();
+}
+
+function setMode(button,key,exclusiveKey=null){
+  mode[key]=!mode[key];
+  button.setAttribute("aria-pressed",String(mode[key]));
+  if(mode[key]&&exclusiveKey){
+    mode[exclusiveKey]=false;
+    $(`#${exclusiveKey==="adv"?"advToggle":"disToggle"}`).setAttribute("aria-pressed","false");
+  }
+}
+
+function collectFields(){
+  const fields={};
+  $$('[data-save]').forEach(el=>fields[el.id]=el.value);
+  return fields;
+}
+
+function populateFields(fields={}){
+  Object.entries(fields).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.value=value;});
+}
+
+let saveTimer;
+function saveState(){
+  clearTimeout(saveTimer);
+  $("#saveState").textContent="Saving…";
+  saveTimer=setTimeout(()=>{
+    state.fields=collectFields();
+    const saved=writeStorage(JSON.stringify(state));
+    $("#saveState").textContent=saved?"Saved locally":"Session only";
+    updateHeader();
+  },120);
+}
+
+function loadState(){
+  try{
+    const saved=JSON.parse(readStorage()||"null");
+    if(saved){
+      state={...structuredClone(DEFAULTS),...saved,resources:{...structuredClone(DEFAULTS.resources),...(saved.resources||{})}};
+      populateFields(state.fields||{});
+    }
+  }catch(error){console.warn("Could not load saved sheet",error);}
+  $("#hpCurrent").value=state.hpCurrent;
+  $("#hpMax").value=state.hpMax;
+  $("#tempHp").value=state.tempHp;
+}
+
+function updateHeader(){
+  const name=$("#charName").value.trim()||"Unnamed Character";
+  const cls=$("#charClass").value.trim()||"Class";
+  const level=$("#charLevel").value||"1";
+  const background=$("#charBackground").value.trim()||"Background";
+  $("#headerName").textContent=`${name} — The Fixer`;
+  $("#headerClass").textContent=`${cls} ${level} · ${background} · Proficiency +2`;
+}
+
+function exportSave(){
+  state.fields=collectFields();
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="damon-cross-character-save.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importSave(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const imported=JSON.parse(reader.result);
+      state={...structuredClone(DEFAULTS),...imported,resources:{...structuredClone(DEFAULTS.resources),...(imported.resources||{})}};
+      populateFields(state.fields||{});
+      $("#hpCurrent").value=state.hpCurrent;
+      $("#hpMax").value=state.hpMax;
+      $("#tempHp").value=state.tempHp;
+      renderResources();
+      renderLog();
+      $$(".condition").forEach(btn=>btn.setAttribute("aria-pressed",String(state.conditions.includes(btn.textContent))));
+      updateHp();
+      updateHeader();
+    }catch(error){alert("That file is not a valid character-sheet save.");}
+  };
+  reader.readAsText(file);
+}
+
+function bindEvents(){
+  $("#advToggle").addEventListener("click",event=>setMode(event.currentTarget,"adv","dis"));
+  $("#disToggle").addEventListener("click",event=>setMode(event.currentTarget,"dis","adv"));
+  $("#sneakToggle").addEventListener("click",event=>setMode(event.currentTarget,"sneak"));
+  $("#critToggle").addEventListener("click",event=>setMode(event.currentTarget,"crit"));
+
+  $("#initiativeRoll").addEventListener("click",()=>rollCheck("Initiative",3));
+  $("#hpMinus").addEventListener("click",()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});
+  $("#hpPlus").addEventListener("click",()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});
+  $("#damageBtn").addEventListener("click",()=>applyDamage(Number($("#hpAmount").value)||0));
+  $("#healBtn").addEventListener("click",()=>applyHeal(Number($("#hpAmount").value)||0));
+  $("#fullHealBtn").addEventListener("click",()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});
+  ["hpCurrent","hpMax","tempHp"].forEach(id=>$(`#${id}`).addEventListener("input",updateHp));
+
+  $$('[data-counter]').forEach(btn=>btn.addEventListener("click",()=>{
+    const delta=Number(btn.dataset.delta);
+    if(btn.dataset.counter==="qty"){trayQty=clamp(trayQty+delta,1,20);$("#qtyOutput").textContent=trayQty;}
+    else{trayMod=clamp(trayMod+delta,-20,20);$("#modOutput").textContent=sign(trayMod);}
+  }));
+
+  $("#undoRoll").addEventListener("click",()=>{state.rolls.shift();renderLog();saveState();});
+  $("#clearRolls").addEventListener("click",()=>{state.rolls=[];renderLog();saveState();});
+  $("#shortRest").addEventListener("click",()=>{mode.sneak=false;$("#sneakToggle").setAttribute("aria-pressed","false");state.resources.sneakUsed=[false];renderResources();saveState();});
+  $("#longRest").addEventListener("click",()=>{
+    $("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;
+    state.resources.hitDice=state.resources.hitDice.map(()=>false);
+    state.resources.sneakUsed=[false];
+    state.resources.deathSuccess=[false,false,false];state.resources.deathFailure=[false,false,false];
+    state.conditions=[];
+    $$(".condition").forEach(btn=>btn.setAttribute("aria-pressed","false"));
+    renderResources();updateHp();saveState();
+  });
+  $("#exportState").addEventListener("click",exportSave);
+  $("#importState").addEventListener("click",()=>$("#importFile").click());
+  $("#importFile").addEventListener("change",event=>{const file=event.target.files[0];if(file)importSave(file);event.target.value="";});
+  $("#printSheet").addEventListener("click",()=>window.print());
+  $("#resetSheet").addEventListener("click",()=>{
+    if(!confirm("Reset all editable fields, trackers, and roll history?"))return;
+    clearStorage();
+    location.reload();
+  });
+  $$('[data-save]').forEach(el=>el.addEventListener("input",saveState));
+}
+
+loadState();
+renderAbilities();
+renderSkills();
+renderAttacks();
+renderDice();
+renderConditions();
+renderResources();
+renderLog();
+bindEvents();
+updateHp();
+updateHeader();
+</script>
+</body>
+</html>
