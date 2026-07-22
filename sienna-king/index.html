@@ -373,7 +373,62 @@
     .toggle{padding:7px 9px}
   }
 
-  @media print{
+
+  /* Floating roll result: remains visible regardless of page position. */
+  .roll-toast{
+    position:fixed;
+    right:max(14px,env(safe-area-inset-right));
+    bottom:calc(14px + env(safe-area-inset-bottom));
+    z-index:1000;
+    display:grid;
+    grid-template-columns:64px minmax(0,1fr) 30px;
+    gap:11px;
+    align-items:center;
+    width:min(420px,calc(100vw - 28px));
+    padding:10px;
+    color:#f5eee3;
+    background:rgba(23,21,19,.97);
+    border:1px solid #4a4038;
+    border-left:6px solid var(--red);
+    border-radius:11px;
+    box-shadow:0 16px 38px rgba(0,0,0,.32);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    opacity:0;
+    visibility:hidden;
+    transform:translateY(16px);
+    pointer-events:none;
+    transition:opacity .16s ease,transform .16s ease,visibility .16s;
+  }
+  .roll-toast.show{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+  .roll-toast-number{
+    display:grid;
+    place-items:center;
+    min-height:54px;
+    border:1px solid #51473f;
+    border-radius:8px;
+    background:#0d0c0b;
+    font:800 29px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .roll-toast-number.nat20{color:#efcf7e;border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+  .roll-toast-number.nat1{color:#d99898;border-color:#8c3b3b;box-shadow:inset 0 0 0 1px #8c3b3b}
+  .roll-toast-copy{min-width:0}
+  .roll-toast-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:#e4a5a1}
+  .roll-toast-detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px;font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#b8aea2}
+  .roll-toast-close{
+    width:30px;height:30px;padding:0;
+    border:1px solid #51473f;border-radius:8px;
+    background:#28231f;color:#d8cec2;
+    font-size:18px;line-height:1;cursor:pointer;
+  }
+  .roll-toast-close:hover{border-color:#91615e;color:#fff}
+  @media(max-width:520px){
+    .roll-toast{right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:calc(100vw - 20px);grid-template-columns:58px minmax(0,1fr) 30px}
+    .roll-toast-number{min-height:50px;font-size:27px}
+  }
+  @media(prefers-reduced-motion:reduce){.roll-toast{transition:none}}
+
+  @media print{.roll-toast{display:none!important}
     body{background:#fff}
     .shell{max-width:none;padding:0}
     .roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
@@ -466,6 +521,16 @@
       <button type="button" class="icon-btn" id="clearRolls" title="Clear roll log" aria-label="Clear roll log">×</button>
     </div>
   </section>
+
+
+  <aside class="roll-toast" id="rollToast" role="status" aria-live="assertive" aria-atomic="true" aria-hidden="true">
+    <div class="roll-toast-number" id="rollToastNumber">—</div>
+    <div class="roll-toast-copy">
+      <div class="roll-toast-label" id="rollToastLabel">Ready</div>
+      <div class="roll-toast-detail" id="rollToastDetail">Your latest roll will appear here.</div>
+    </div>
+    <button type="button" class="roll-toast-close" id="rollToastClose" aria-label="Dismiss roll result">×</button>
+  </aside>
 
   <div class="dashboard">
     <div class="column left">
@@ -572,7 +637,33 @@ let saveTimer;
 function diceText(groups){return (groups||[]).map(g=>g[0]+"d"+g[1]).join("+");}
 function rollGroups(groups,multiplier){let total=0,parts=[];(groups||[]).forEach(g=>{const count=g[0]*(multiplier||1),sides=g[1],vals=[];for(let i=0;i<count;i++){const v=rollDie(sides);vals.push(v);total+=v;}parts.push(count+"d"+sides+"["+vals.join(",")+"]");});return {total:total,detail:parts.join(" + ")};}
 function d20(){if(mode.adv||mode.dis){const a=rollDie(20),b=rollDie(20),picked=mode.adv?Math.max(a,b):Math.min(a,b);return {nat:picked,detail:"d20["+a+","+b+"] → "+picked+" "+(mode.adv?"adv":"dis")};}const a=rollDie(20);return {nat:a,detail:"d20["+a+"]"};}
-function showResult(label,total,detail,nat){const box=$("#resultNumber");box.textContent=total;box.classList.remove("nat20","nat1","stamp");void box.offsetWidth;if(nat===20)box.classList.add("nat20");if(nat===1)box.classList.add("nat1");box.classList.add("stamp");$("#resultLabel").textContent=label;$("#resultDetail").textContent=detail;state.rolls.unshift({label:label,total:total,detail:detail});state.rolls=state.rolls.slice(0,40);renderLog();saveState();}
+
+let rollToastTimer=0;
+function hideRollToast(){
+  const toast=$("#rollToast");
+  if(!toast)return;
+  toast.classList.remove("show");
+  toast.setAttribute("aria-hidden","true");
+}
+function showRollToast(label,total,detail,natural=0){
+  const toast=$("#rollToast");
+  if(!toast)return;
+  const number=$("#rollToastNumber");
+  number.textContent=total;
+  number.className="roll-toast-number";
+  if(natural===20)number.classList.add("nat20");
+  if(natural===1)number.classList.add("nat1");
+  $("#rollToastLabel").textContent=label;
+  $("#rollToastDetail").textContent=detail;
+  toast.setAttribute("aria-hidden","false");
+  toast.classList.remove("show");
+  void toast.offsetWidth;
+  toast.classList.add("show");
+  clearTimeout(rollToastTimer);
+  rollToastTimer=setTimeout(hideRollToast,6500);
+}
+
+function showResult(label,total,detail,nat){const box=$("#resultNumber");box.textContent=total;box.classList.remove("nat20","nat1","stamp");void box.offsetWidth;if(nat===20)box.classList.add("nat20");if(nat===1)box.classList.add("nat1");box.classList.add("stamp");$("#resultLabel").textContent=label;$("#resultDetail").textContent=detail;showRollToast(label,total,detail,nat);state.rolls.unshift({label:label,total:total,detail:detail});state.rolls=state.rolls.slice(0,40);renderLog();saveState();}
 function rollCheck(label,bonus){const r=d20(),nat=r.nat===20?20:r.nat===1?1:0;showResult(label,r.nat+bonus,r.detail+" "+sign(bonus),nat);}
 function rollAttack(item,label){const r=d20(),nat=r.nat===20?20:r.nat===1?1:0;showResult(label||item.name+" — to hit",r.nat+item.hit,r.detail+" "+sign(item.hit)+(nat===20?" · CRITICAL":""),nat);}
 function rollDamage(item,label,allowCrit){const mult=(allowCrit&&mode.crit)?2:1;const r=rollGroups(item.dice,mult);const add=Number(item.mod||item.add||0);showResult(label||item.name+" — damage"+(mult===2?" CRIT":""),r.total+add,r.detail+(add?" "+sign(add):""),0);}
@@ -610,7 +701,7 @@ function importSave(file){const reader=new FileReader();reader.onload=()=>{try{c
 function resetByRefresh(refresh){CHARACTER.resources.forEach(r=>{if(r.refresh===refresh||refresh==='long'&&r.refresh==='short')state.resources[r.key]=Array(r.count).fill(false);});}
 function shortRest(){resetByRefresh('short');renderResources();showResult('Short Rest','REST','Short-rest resources restored',0);saveState();}
 function longRest(){$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;resetByRefresh('long');Object.keys(state.slots).forEach(l=>state.slots[l]=state.slots[l].map(()=>false));state.resources.deathSuccess=[false,false,false];state.resources.deathFailure=[false,false,false];state.conditions=[];renderResources();renderSlots();renderConditions();updateHp();if(CHARACTER.special==='portent')rollPortents(true);else showResult('Long Rest','REST','HP, slots, and resources restored',0);saveState();}
-function bindEvents(){$("#advToggle").addEventListener('click',e=>setMode(e.currentTarget,'adv','dis'));$("#disToggle").addEventListener('click',e=>setMode(e.currentTarget,'dis','adv'));$("#critToggle").addEventListener('click',e=>setMode(e.currentTarget,'crit'));$("#initiativeRoll").addEventListener('click',()=>rollCheck('Initiative',CHARACTER.initiative));$("#hpMinus").addEventListener('click',()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});$("#hpPlus").addEventListener('click',()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});$("#damageBtn").addEventListener('click',()=>applyDamage($("#hpAmount").value));$("#healBtn").addEventListener('click',()=>applyHeal($("#hpAmount").value));$("#fullHealBtn").addEventListener('click',()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});['hpCurrent','hpMax','tempHp'].forEach(id=>$("#"+id).addEventListener('input',updateHp));$$('[data-counter]').forEach(b=>b.addEventListener('click',()=>{const d=Number(b.dataset.delta);if(b.dataset.counter==='qty'){trayQty=clamp(trayQty+d,1,20);$("#qtyOutput").textContent=trayQty;}else{trayMod=clamp(trayMod+d,-20,20);$("#modOutput").textContent=sign(trayMod);}}));$("#undoRoll").addEventListener('click',()=>{state.rolls.shift();renderLog();saveState();});$("#clearRolls").addEventListener('click',()=>{state.rolls=[];renderLog();saveState();});$("#shortRest").addEventListener('click',shortRest);$("#longRest").addEventListener('click',longRest);$("#exportState").addEventListener('click',exportSave);$("#importState").addEventListener('click',()=>$("#importFile").click());$("#importFile").addEventListener('change',e=>{if(e.target.files[0])importSave(e.target.files[0]);e.target.value='';});$("#printSheet").addEventListener('click',()=>window.print());$("#resetSheet").addEventListener('click',()=>{if(confirm('Reset all editable fields, trackers, spell slots, and roll history?')){clearStorage();location.reload();}});$$('[data-save]').forEach(el=>el.addEventListener('input',saveState));}
+function bindEvents(){$("#advToggle").addEventListener('click',e=>setMode(e.currentTarget,'adv','dis'));$("#disToggle").addEventListener('click',e=>setMode(e.currentTarget,'dis','adv'));$("#critToggle").addEventListener('click',e=>setMode(e.currentTarget,'crit'));$("#initiativeRoll").addEventListener('click',()=>rollCheck('Initiative',CHARACTER.initiative));$("#hpMinus").addEventListener('click',()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});$("#hpPlus").addEventListener('click',()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});$("#damageBtn").addEventListener('click',()=>applyDamage($("#hpAmount").value));$("#healBtn").addEventListener('click',()=>applyHeal($("#hpAmount").value));$("#fullHealBtn").addEventListener('click',()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});['hpCurrent','hpMax','tempHp'].forEach(id=>$("#"+id).addEventListener('input',updateHp));$$('[data-counter]').forEach(b=>b.addEventListener('click',()=>{const d=Number(b.dataset.delta);if(b.dataset.counter==='qty'){trayQty=clamp(trayQty+d,1,20);$("#qtyOutput").textContent=trayQty;}else{trayMod=clamp(trayMod+d,-20,20);$("#modOutput").textContent=sign(trayMod);}}));$("#undoRoll").addEventListener('click',()=>{state.rolls.shift();renderLog();saveState();});$("#clearRolls").addEventListener('click',()=>{state.rolls=[];renderLog();saveState();});$("#shortRest").addEventListener('click',shortRest);$("#longRest").addEventListener('click',longRest);$("#exportState").addEventListener('click',exportSave);$("#importState").addEventListener('click',()=>$("#importFile").click());$("#importFile").addEventListener('change',e=>{if(e.target.files[0])importSave(e.target.files[0]);e.target.value='';});$("#printSheet").addEventListener('click',()=>window.print());$("#resetSheet").addEventListener('click',()=>{if(confirm('Reset all editable fields, trackers, spell slots, and roll history?')){clearStorage();location.reload();}});const toastClose=$("#rollToastClose");if(toastClose)toastClose.addEventListener('click',hideRollToast);$$('[data-save]').forEach(el=>el.addEventListener('input',saveState));}
 function initialize(){loadState();renderAbilities();renderSkills();renderAttacks();renderDice();renderConditions();renderResources();renderSpellStats();renderSlots();renderSpells();renderSpecial();renderFeatures();renderProficiencies();renderLog();bindEvents();updateHp();updateHeader();const warning=$("#interactionWarning");if(warning)warning.hidden=true;document.documentElement.dataset.sheetReady='true';}
 try{initialize();}catch(error){console.error(error);const warning=document.getElementById('interactionWarning');if(warning){warning.hidden=false;warning.textContent='Interactive controls could not start in this viewer. Open the hosted GitHub Pages link in Safari or another full browser.';}}
 </script>
