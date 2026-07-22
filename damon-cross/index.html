@@ -375,7 +375,62 @@
     .toggle{padding:7px 9px}
   }
 
-  @media print{
+
+  /* Floating roll result: remains visible regardless of page position. */
+  .roll-toast{
+    position:fixed;
+    right:max(14px,env(safe-area-inset-right));
+    bottom:calc(14px + env(safe-area-inset-bottom));
+    z-index:1000;
+    display:grid;
+    grid-template-columns:64px minmax(0,1fr) 30px;
+    gap:11px;
+    align-items:center;
+    width:min(420px,calc(100vw - 28px));
+    padding:10px;
+    color:#f5eee3;
+    background:rgba(23,21,19,.97);
+    border:1px solid #4a4038;
+    border-left:6px solid var(--red);
+    border-radius:11px;
+    box-shadow:0 16px 38px rgba(0,0,0,.32);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    opacity:0;
+    visibility:hidden;
+    transform:translateY(16px);
+    pointer-events:none;
+    transition:opacity .16s ease,transform .16s ease,visibility .16s;
+  }
+  .roll-toast.show{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+  .roll-toast-number{
+    display:grid;
+    place-items:center;
+    min-height:54px;
+    border:1px solid #51473f;
+    border-radius:8px;
+    background:#0d0c0b;
+    font:800 29px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .roll-toast-number.nat20{color:#efcf7e;border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+  .roll-toast-number.nat1{color:#d99898;border-color:#8c3b3b;box-shadow:inset 0 0 0 1px #8c3b3b}
+  .roll-toast-copy{min-width:0}
+  .roll-toast-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:#e4a5a1}
+  .roll-toast-detail{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:3px;font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#b8aea2}
+  .roll-toast-close{
+    width:30px;height:30px;padding:0;
+    border:1px solid #51473f;border-radius:8px;
+    background:#28231f;color:#d8cec2;
+    font-size:18px;line-height:1;cursor:pointer;
+  }
+  .roll-toast-close:hover{border-color:#91615e;color:#fff}
+  @media(max-width:520px){
+    .roll-toast{right:10px;bottom:calc(10px + env(safe-area-inset-bottom));width:calc(100vw - 20px);grid-template-columns:58px minmax(0,1fr) 30px}
+    .roll-toast-number{min-height:50px;font-size:27px}
+  }
+  @media(prefers-reduced-motion:reduce){.roll-toast{transition:none}}
+
+  @media print{.roll-toast{display:none!important}
     body{background:#fff}
     .shell{max-width:none;padding:0}
     .back-link,.roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
@@ -425,6 +480,16 @@
       <button type="button" class="icon-btn" id="clearRolls" title="Clear roll log" aria-label="Clear roll log">×</button>
     </div>
   </section>
+
+
+  <aside class="roll-toast" id="rollToast" role="status" aria-live="assertive" aria-atomic="true" aria-hidden="true">
+    <div class="roll-toast-number" id="rollToastNumber">—</div>
+    <div class="roll-toast-copy">
+      <div class="roll-toast-label" id="rollToastLabel">Ready</div>
+      <div class="roll-toast-detail" id="rollToastDetail">Your latest roll will appear here.</div>
+    </div>
+    <button type="button" class="roll-toast-close" id="rollToastClose" aria-label="Dismiss roll result">×</button>
+  </aside>
 
   <div class="dashboard">
     <div class="column left">
@@ -689,6 +754,32 @@ function d20(){
   return {natural,detail:`d20 [${natural}]`};
 }
 
+
+let rollToastTimer=0;
+function hideRollToast(){
+  const toast=$("#rollToast");
+  if(!toast)return;
+  toast.classList.remove("show");
+  toast.setAttribute("aria-hidden","true");
+}
+function showRollToast(label,total,detail,natural=0){
+  const toast=$("#rollToast");
+  if(!toast)return;
+  const number=$("#rollToastNumber");
+  number.textContent=total;
+  number.className="roll-toast-number";
+  if(natural===20)number.classList.add("nat20");
+  if(natural===1)number.classList.add("nat1");
+  $("#rollToastLabel").textContent=label;
+  $("#rollToastDetail").textContent=detail;
+  toast.setAttribute("aria-hidden","false");
+  toast.classList.remove("show");
+  void toast.offsetWidth;
+  toast.classList.add("show");
+  clearTimeout(rollToastTimer);
+  rollToastTimer=setTimeout(hideRollToast,6500);
+}
+
 function setResult(label,total,detail,natural=0){
   const number=$("#resultNumber");
   number.textContent=total;
@@ -700,6 +791,7 @@ function setResult(label,total,detail,natural=0){
   number.classList.add("stamp");
   $("#resultLabel").textContent=label;
   $("#resultDetail").textContent=detail;
+  showRollToast(label,total,detail,natural);
   state.rolls.unshift({label,total,detail,time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});
   state.rolls=state.rolls.slice(0,40);
   renderLog();
@@ -1027,6 +1119,7 @@ function bindEvents(){
     clearStorage();
     location.reload();
   });
+  $$('#rollToastClose').forEach(btn=>btn.addEventListener("click",hideRollToast));
   $$('[data-save]').forEach(el=>el.addEventListener("input",saveState));
 }
 
