@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1b1917">
+<title>Sienna King — Interactive Character Dossier</title>
+<style>
+  :root{
+    --paper:#eee8dc;
+    --paper-deep:#e3dac8;
+    --card:#faf7ef;
+    --card-strong:#fffdf8;
+    --ink:#211d19;
+    --muted:#72685d;
+    --faint:#a79b8c;
+    --line:#cfc4b3;
+    --line-soft:#e8dfd1;
+    --red:#7b2d2d;
+    --red-dark:#552020;
+    --red-soft:#efe0dc;
+    --gold:#8d6e32;
+    --gold-soft:#efe6cf;
+    --green:#38643d;
+    --green-soft:#dce9dc;
+    --black:#171513;
+    --white:#fff;
+    --shadow:0 12px 32px rgba(44,34,24,.10);
+    --radius:12px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    min-width:320px;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 85% -20%, rgba(123,45,45,.10), transparent 38rem),
+      linear-gradient(180deg,var(--paper),#f5f0e7 34rem,var(--paper));
+    font:14px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  button,input,textarea,select{font:inherit}
+  button{color:inherit;-webkit-appearance:none;appearance:none}
+  button,[role="button"],input,textarea,select{touch-action:manipulation}
+  button,[role="button"]{-webkit-tap-highlight-color:rgba(123,45,45,.18)}
+  .shell{max-width:1240px;margin:0 auto;padding:18px 18px 56px}
+
+  .masthead{
+    position:relative;
+    overflow:hidden;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:22px;
+    align-items:end;
+    padding:22px 24px;
+    color:#f7f1e7;
+    background:var(--black);
+    border:1px solid #28231f;
+    border-left:8px solid var(--red);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+  }
+  .masthead::after{
+    content:"";
+    position:absolute;
+    width:260px;height:260px;
+    right:-120px;top:-155px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:50%;
+    box-shadow:0 0 0 26px rgba(255,255,255,.025),0 0 0 52px rgba(255,255,255,.018);
+    pointer-events:none;
+  }
+  .eyebrow{font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:#cdbb98}
+  .masthead h1{margin:6px 0 0;font:700 clamp(26px,4vw,40px)/1 Georgia,"Times New Roman",serif;letter-spacing:-.025em}
+  .masthead .subtitle{margin-top:8px;color:#bdb3a6;font-size:12px}
+  .identity-mark{position:relative;z-index:1;text-align:right;min-width:280px}
+  .identity-mark strong{display:block;color:#e4a5a1;font-size:15px;letter-spacing:.055em;text-transform:uppercase}
+  .identity-mark span{display:block;margin-top:4px;color:#a89e92;font-size:12px}
+
+  .roll-console{
+    position:sticky;
+    top:0;
+    z-index:50;
+    display:grid;
+    grid-template-columns:minmax(250px,1fr) auto auto;
+    gap:14px;
+    align-items:center;
+    margin:12px 0 0;
+    padding:11px 14px;
+    color:#f5eee3;
+    background:rgba(23,21,19,.97);
+    border:1px solid #322c27;
+    border-left:8px solid var(--red);
+    border-radius:10px;
+    box-shadow:0 12px 28px rgba(0,0,0,.19);
+    backdrop-filter:blur(10px);
+  }
+  .result{display:grid;grid-template-columns:86px minmax(0,1fr);gap:12px;align-items:center;min-width:0}
+  .result>div:last-child{min-width:0}
+  .result-number{
+    display:grid;place-items:center;
+    min-height:58px;
+    border:1px solid #4d443c;
+    border-radius:8px;
+    background:#0d0c0b;
+    font:800 34px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .result-number.nat20{color:#efcf7e;border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+  .result-number.nat1{color:#d99898;border-color:#8c3b3b;box-shadow:inset 0 0 0 1px #8c3b3b}
+  .result-label{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#e4a5a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .result-detail{margin-top:3px;font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a99e91;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .mode-group,.quick-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .toggle,.icon-btn,.small-btn,.action-btn,.die-btn,.step-btn,.rest-btn{
+    border:1px solid #4a423b;
+    border-radius:999px;
+    background:#26221e;
+    color:#d2c8bc;
+    cursor:pointer;
+    transition:transform .08s ease,background .12s ease,border-color .12s ease,color .12s ease;
+  }
+  .toggle{padding:7px 11px;font-size:11px;font-weight:700;letter-spacing:.03em}
+  .toggle:hover,.icon-btn:hover{border-color:#91615e;color:#fff}
+  .toggle:active,.icon-btn:active,.small-btn:active,.action-btn:active,.die-btn:active,.step-btn:active,.rest-btn:active{transform:translateY(1px)}
+  .toggle[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+  .toggle.positive[aria-pressed="true"]{background:var(--green);border-color:var(--green)}
+  .toggle.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+  .icon-btn{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-weight:800}
+
+  .dashboard{display:grid;grid-template-columns:290px minmax(0,1fr) 330px;gap:14px;margin-top:14px;align-items:start}
+  .column{display:grid;gap:14px;min-width:0}
+  .panel{
+    overflow:hidden;
+    background:rgba(250,247,239,.96);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:0 8px 22px rgba(50,40,28,.055);
+  }
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-height:40px;
+    padding:9px 13px;
+    color:#fff;
+    background:var(--red);
+  }
+  .panel-head h2{margin:0;font-size:11px;letter-spacing:.11em;text-transform:uppercase}
+  .panel-head small{font-size:10px;color:#f0d5d2}
+  .panel-body{padding:13px}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .field-grid .span-2{grid-column:1/-1}
+  .field label,.note-label{display:block;margin-bottom:4px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+  .field input,.field textarea,.field select,.notes-area{
+    width:100%;
+    min-width:0;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:var(--card-strong);
+    color:var(--ink);
+    padding:8px 9px;
+  }
+  .field textarea,.notes-area{resize:vertical;min-height:72px}
+  .field input:focus,.field textarea:focus,.field select:focus,.notes-area:focus{outline:2px solid rgba(141,110,50,.55);outline-offset:1px;border-color:var(--gold)}
+
+  .ability-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .ability{
+    position:relative;
+    text-align:center;
+    padding:9px 5px 8px;
+    background:linear-gradient(180deg,var(--card-strong),var(--paper));
+    border:1px solid var(--line);
+    border-radius:10px;
+  }
+  .ability-name{color:var(--red);font-size:9px;font-weight:900;letter-spacing:.08em}
+  .ability-score{margin-top:3px;font:700 24px/1 Georgia,"Times New Roman",serif}
+  .ability-mod{
+    display:inline-grid;place-items:center;
+    min-width:50px;
+    margin-top:7px;padding:3px 8px;
+    border:1px solid var(--line);border-radius:999px;
+    background:#fff;
+    font:800 14px/1.25 ui-monospace,SFMono-Regular,Menlo,monospace;
+    cursor:pointer;
+  }
+  .ability-mod:hover{background:var(--red);border-color:var(--red);color:#fff}
+  .save-btn{
+    width:100%;margin-top:6px;padding:4px 3px;
+    border:0;border-radius:6px;
+    background:transparent;color:var(--muted);
+    font-size:9px;font-weight:800;letter-spacing:.04em;
+    cursor:pointer;
+  }
+  .save-btn.prof{background:var(--red-soft);color:var(--red)}
+  .save-btn:hover{background:var(--red);color:#fff}
+
+  .vital-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .vital{
+    min-height:67px;
+    padding:8px 5px;
+    text-align:center;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:var(--card-strong);
+  }
+  .vital.rollable{cursor:pointer}
+  .vital.rollable:hover{border-color:var(--red);background:#fff}
+  .vital-label{font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .vital-value{margin-top:5px;font:700 21px/1 Georgia,"Times New Roman",serif}
+
+  .hp-card{margin-top:9px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--card-strong)}
+  .hp-top{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center}
+  .hp-title{font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--red)}
+  .hp-readout{font:800 18px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .temp-hp{font-size:11px;color:var(--muted)}
+  .hp-bar{height:10px;margin-top:9px;border-radius:999px;background:#e5ddd1;overflow:hidden}
+  .hp-fill{height:100%;width:100%;background:var(--green);transition:width .18s ease,background .18s ease}
+  .hp-controls{display:grid;grid-template-columns:36px 1fr 36px;gap:7px;margin-top:10px}
+  .hp-controls input{text-align:center;width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;font:800 16px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .step-btn{height:34px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:18px}
+  .hp-tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:8px}
+  .small-btn{padding:7px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:11px;font-weight:800}
+  .small-btn:hover{border-color:var(--red);background:#fff}
+  .mini-input{width:100%;border:1px solid var(--line);border-radius:7px;background:#fff;padding:6px 7px;text-align:center}
+
+  .resource-row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .resource-row:last-child{border-bottom:0;padding-bottom:0}
+  .resource-row:first-child{padding-top:0}
+  .resource-name{font-weight:800;font-size:12px}
+  .resource-note{font-size:10px;color:var(--muted)}
+  .pips{display:flex;gap:5px}
+  .pip{width:22px;height:22px;border:1px solid var(--line);border-radius:50%;background:#fff;cursor:pointer}
+  .pip[aria-pressed="true"]{background:var(--red);border-color:var(--red);box-shadow:inset 0 0 0 4px #fff}
+  .pip.gold[aria-pressed="true"]{background:var(--gold);border-color:var(--gold)}
+
+  .skill-list{display:grid;grid-template-columns:1fr}
+  .skill-row{
+    width:100%;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    text-align:left;
+    display:grid;
+    grid-template-columns:18px minmax(0,1fr) 42px;
+    gap:8px;
+    align-items:center;
+    min-height:35px;
+    padding:5px 4px;
+    border-bottom:1px solid var(--line-soft);
+    cursor:pointer;
+  }
+  .skill-row:hover{background:#fff}
+  .skill-row:last-child{border-bottom-color:transparent}
+  .prof-dot{
+    width:11px;height:11px;margin:auto;
+    border:1.5px solid var(--faint);
+    border-radius:50%;
+    background:transparent;
+  }
+  .prof-dot.prof{border-color:var(--red);background:var(--red);box-shadow:inset 0 0 0 2.5px var(--card-strong)}
+  .prof-dot.expertise{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 2.5px var(--card-strong),0 0 0 1px var(--gold)}
+  .skill-name{min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .skill-ability{margin-left:5px;color:var(--faint);font:9px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .skill-mod{
+    width:42px;
+    text-align:right;
+    color:var(--red);
+    font:800 14px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-variant-numeric:tabular-nums;
+  }
+  .skill-row.expertise .skill-mod{color:var(--gold)}
+  .legend{display:flex;gap:14px;align-items:center;margin-bottom:6px;color:var(--muted);font-size:10px}
+  .legend span{display:flex;gap:5px;align-items:center}
+  .legend .prof-dot{margin:0}
+
+  .attack-card{padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--card-strong)}
+  .attack-card+.attack-card{margin-top:9px}
+  .attack-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .attack-name{font-weight:900;font-size:13px}
+  .attack-bonus{flex:0 0 auto;min-width:44px;text-align:right;color:var(--red);font:900 15px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .attack-meta{margin-top:3px;color:var(--muted);font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .attack-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+  .action-btn{padding:8px 9px;border-radius:7px;background:var(--red);border-color:var(--red);color:#fff;font-size:11px;font-weight:900}
+  .action-btn.secondary{background:var(--black);border-color:var(--black)}
+  .action-btn:hover{filter:brightness(.92)}
+
+  .dice-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .die-btn{min-width:0;padding:9px 2px;border-radius:8px;background:var(--paper);border-color:var(--line);color:var(--ink);font:800 13px/1 Georgia,"Times New Roman",serif}
+  .die-btn:hover{background:#fff;border-color:var(--red)}
+  .dice-options{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .counter{display:grid;grid-template-columns:28px 1fr 28px;gap:5px;align-items:center}
+  .counter button{height:28px;border:1px solid var(--line);border-radius:7px;background:var(--paper);cursor:pointer}
+  .counter output{text-align:center;font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .counter-label{text-align:center;margin-bottom:4px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+
+  .feature{padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .feature:last-child{border-bottom:0;padding-bottom:0}
+  .feature:first-child{padding-top:0}
+  .feature h3{margin:0;color:var(--red);font-size:12px}
+  .feature p{margin:3px 0 0;font-size:11.5px;color:#453d35}
+
+  .condition-list{display:flex;gap:6px;flex-wrap:wrap}
+  .condition{
+    border:1px solid var(--line);border-radius:999px;background:var(--card-strong);padding:6px 9px;
+    color:var(--muted);font-size:10px;font-weight:800;cursor:pointer;
+  }
+  .condition[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+
+  .death-saves{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .save-track label{display:block;margin-bottom:6px;font-size:9px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .save-track.success label{color:var(--green)}
+  .save-track.failure label{color:var(--red)}
+
+  .log-list{list-style:none;margin:0;padding:0;max-height:295px;overflow:auto}
+  .log-item{padding:8px 12px;border-bottom:1px solid var(--line-soft);background:transparent}
+  .log-item:first-child{background:#f2eadb}
+  .log-top{display:flex;justify-content:space-between;gap:9px}
+  .log-name{font-size:11px;font-weight:900}
+  .log-total{color:var(--red);font:900 13px/1 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .log-detail{margin-top:2px;color:var(--muted);font:10px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .empty-log{padding:18px;text-align:center;color:var(--muted);font-size:11px}
+
+  .notes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .notes-grid .wide{grid-column:1/-1}
+
+  .utility-bar{display:flex;gap:7px;flex-wrap:wrap}
+  .rest-btn{padding:7px 9px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:10px;font-weight:800}
+  .rest-btn:hover{border-color:var(--red);background:#fff}
+  .save-state{margin-left:auto;color:var(--muted);font-size:10px;align-self:center}
+  .interaction-warning{
+    margin:12px 0 0;padding:10px 12px;border:1px solid #b98742;border-radius:9px;
+    background:#fff4d8;color:#5b421d;font-size:12px;font-weight:700;
+  }
+  .interaction-warning[hidden]{display:none}
+
+  footer{margin-top:18px;text-align:center;color:var(--muted);font-size:10px;font-style:italic}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  @keyframes stamp{0%{transform:scale(1.18) rotate(-2deg);opacity:.25}100%{transform:scale(1) rotate(0);opacity:1}}
+  .stamp{animation:stamp .22s cubic-bezier(.2,1.3,.4,1)}
+  @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.stamp{animation:none}}
+
+  @media(max-width:1040px){
+    .dashboard{grid-template-columns:280px minmax(0,1fr)}
+    .column.right{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .column.right .panel:last-child{grid-column:1/-1}
+    .roll-console{grid-template-columns:minmax(230px,1fr) auto}
+    .quick-actions{grid-column:1/-1}
+  }
+  @media(max-width:760px){
+    .shell{padding:10px 10px 40px}
+    .masthead{grid-template-columns:1fr;padding:18px}
+    .identity-mark{text-align:left;min-width:0}
+    .roll-console{position:relative;grid-template-columns:1fr;padding:10px;border-left-width:6px}
+    .mode-group,.quick-actions{justify-content:flex-start}
+    .dashboard{grid-template-columns:1fr}
+    .column.right{grid-column:auto;grid-template-columns:1fr}
+    .column.right .panel:last-child{grid-column:auto}
+    .skill-row:last-child{border-bottom:0}
+  }
+  @media(max-width:430px){
+    .masthead h1{font-size:28px}
+    .result{grid-template-columns:74px 1fr}
+    .result-number{min-height:52px;font-size:30px}
+    .field-grid,.notes-grid{grid-template-columns:1fr}
+    .field-grid .span-2,.notes-grid .wide{grid-column:auto}
+    .ability-grid{grid-template-columns:repeat(2,1fr)}
+    .dice-grid{grid-template-columns:repeat(4,1fr)}
+    .toggle{padding:7px 9px}
+  }
+
+  @media print{
+    body{background:#fff}
+    .shell{max-width:none;padding:0}
+    .roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
+    .masthead,.panel{box-shadow:none;break-inside:avoid}
+    .dashboard{grid-template-columns:1fr 1.25fr 1fr;gap:8px}
+    .column{gap:8px}
+    .panel-head{background:#333!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .panel-body{padding:9px}
+  }
+
+  :root{--arc:#3a4d7a;--arc-dark:#29395e;--arc-soft:#e1e6f0}
+  .panel-head.arcane{background:var(--arc)}
+  .panel-head.arcane small{color:#d9e0ef}
+  .back-link{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;color:var(--red);font-size:11px;font-weight:900;letter-spacing:.07em;text-decoration:none;text-transform:uppercase}
+  .back-link:hover{text-decoration:underline}
+  .status-note{margin-top:9px;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--muted);font-size:10.5px}
+  .spell-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+  .spell-stat{padding:9px 5px;text-align:center;border:1px solid var(--line);border-radius:9px;background:var(--card-strong)}
+  .spell-stat-label{font-size:8px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--arc)}
+  .spell-stat-value{margin-top:5px;font:700 20px/1 Georgia,"Times New Roman",serif}
+  .slot-group{padding:9px 0;border-top:1px solid var(--line-soft)}
+  .slot-group:first-of-type{border-top:0;padding-top:0}
+  .slot-line{display:grid;grid-template-columns:minmax(90px,1fr) auto;gap:10px;align-items:center}
+  .slot-name{font-size:11px;font-weight:900}
+  .slot-note{font-size:10px;color:var(--muted)}
+  .slot-pips{display:flex;gap:6px}
+  .slot-pip{width:24px;height:24px;border:2px solid var(--arc);border-radius:50%;background:var(--arc);cursor:pointer;box-shadow:inset 0 0 0 3px #fff}
+  .slot-pip[aria-pressed="true"]{background:#fff;box-shadow:none}
+  .spell-section+.spell-section{margin-top:13px}
+  .spell-section-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid var(--line-soft);color:var(--arc);font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+  .spell-card{padding:9px;border:1px solid var(--line);border-radius:9px;background:var(--card-strong)}
+  .spell-card+.spell-card{margin-top:7px}
+  .spell-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .spell-name{font-size:12.5px;font-weight:900}
+  .spell-level{flex:0 0 auto;padding:2px 7px;border-radius:999px;background:var(--arc-soft);color:var(--arc);font-size:9px;font-weight:900;text-transform:uppercase}
+  .spell-meta{margin-top:3px;color:var(--muted);font:10.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+  .spell-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .spell-btn{padding:7px 9px;border:1px solid var(--arc);border-radius:7px;background:var(--arc);color:#fff;font-size:10.5px;font-weight:900;cursor:pointer}
+  .spell-btn.secondary{background:#fff;color:var(--arc)}
+  .spell-btn.heal{border-color:var(--green);background:var(--green)}
+  .spell-btn:hover{filter:brightness(.94)}
+  .special-grid{display:grid;gap:9px}
+  .special-box{padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--card-strong)}
+  .special-box h3{margin:0;color:var(--arc);font-size:12px}
+  .special-box p{margin:4px 0 0;color:#453d35;font-size:11.5px}
+  .portent-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .portent-card{padding:9px;text-align:center;border:1px solid var(--gold);border-radius:9px;background:var(--gold-soft)}
+  .portent-value{font:900 28px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
+  .portent-card.used{opacity:.48}
+  .portent-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+  .portent-actions button{padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:10px;font-weight:900;cursor:pointer}
+  .special-action{width:100%;margin-top:9px;padding:8px;border:1px solid var(--arc);border-radius:7px;background:var(--arc);color:#fff;font-size:11px;font-weight:900;cursor:pointer}
+  .resource-row.arcane .pip[aria-pressed="true"]{background:var(--arc);border-color:var(--arc)}
+  @media(max-width:430px){.spell-stats{grid-template-columns:repeat(2,1fr)}.portent-grid{grid-template-columns:1fr 1fr}}
+  @media print{.back-link,.spell-actions,.special-action,.portent-actions{display:none!important}}
+</style>
+</head>
+<body>
+
+<main class="shell">
+  <a class="back-link" href="../">← Character Select</a>
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">The Ironspine · Vermillion Bureau · Casefile 001</div>
+      <h1>Interactive Character Dossier</h1>
+      <div class="subtitle">Hosted character sheet · local autosave · touch and keyboard accessible</div>
+    </div>
+    <div class="identity-mark">
+      <strong id="headerName">Sienna King — The Tracker</strong>
+      <span id="headerClass">Druid (Circle of the Land) 3 · Outlander (Bureau Field Asset) · Proficiency +2</span>
+    </div>
+  </header>
+
+  <div class="interaction-warning" id="interactionWarning" role="status">
+    Interactive controls have not started. This viewer may block JavaScript. Open the hosted GitHub Pages link in Safari or another full browser.
+  </div>
+
+  <section class="roll-console" aria-label="Roll console">
+    <div class="result" aria-live="polite">
+      <div class="result-number" id="resultNumber">—</div>
+      <div><div class="result-label" id="resultLabel">Ready</div><div class="result-detail" id="resultDetail">Select a check, save, skill, attack, spell, or die.</div></div>
+    </div>
+    <div class="mode-group" aria-label="Roll modes">
+      <button type="button" class="toggle positive" id="advToggle" aria-pressed="false">Advantage</button>
+      <button type="button" class="toggle" id="disToggle" aria-pressed="false">Disadvantage</button>
+      <button type="button" class="toggle gold" id="critToggle" aria-pressed="false">Critical</button>
+    </div>
+    <div class="quick-actions">
+      <button type="button" class="icon-btn" id="undoRoll" title="Remove latest roll" aria-label="Remove latest roll">↶</button>
+      <button type="button" class="icon-btn" id="clearRolls" title="Clear roll log" aria-label="Clear roll log">×</button>
+    </div>
+  </section>
+
+  <div class="dashboard">
+    <div class="column left">
+      <section class="panel"><div class="panel-head"><h2>Identity</h2><small>editable</small></div><div class="panel-body">
+        <div class="field-grid">
+          <div class="field span-2"><label for="charName">Name</label><input id="charName" data-save value="Sienna King"></div>
+          <div class="field"><label for="charClass">Class</label><input id="charClass" data-save value="Druid (Circle of the Land)"></div>
+          <div class="field"><label for="charLevel">Level</label><input id="charLevel" data-save type="number" min="1" max="20" value="3"></div>
+          <div class="field"><label for="charBackground">Background</label><input id="charBackground" data-save value="Outlander (Bureau Field Asset)"></div>
+          <div class="field"><label for="charSpecies">Species</label><input id="charSpecies" data-save value="Half-Elf" placeholder="Fill in"></div>
+          <div class="field"><label for="charAlignment">Alignment</label><input id="charAlignment" data-save placeholder="Fill in"></div>
+          <div class="field"><label for="charPlayer">Played by</label><input id="charPlayer" data-save placeholder="Fill in"></div>
+        </div>
+      </div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Ability Scores</h2><small>modifier · save</small></div><div class="panel-body"><div class="ability-grid" id="abilityGrid"></div></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Resources</h2><small>click to mark used</small></div><div class="panel-body" id="resourceList"></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Conditions</h2><small>session tracker</small></div><div class="panel-body"><div class="condition-list" id="conditionList"></div></div></section>
+    </div>
+
+    <div class="column center">
+      <section class="panel"><div class="panel-head"><h2>Vitals</h2><small>combat-ready</small></div><div class="panel-body">
+        <div class="vital-grid">
+          <div class="vital"><div class="vital-label">Armor Class</div><div class="vital-value">14</div></div>
+          <button type="button" class="vital rollable" id="initiativeRoll"><div class="vital-label">Initiative</div><div class="vital-value">+2</div></button>
+          <div class="vital"><div class="vital-label">Speed</div><div class="vital-value">30 ft</div></div>
+          <div class="vital"><div class="vital-label">Proficiency</div><div class="vital-value">+2</div></div>
+          <div class="vital"><div class="vital-label">Hit Dice</div><div class="vital-value">3d8</div></div>
+          <div class="vital"><div class="vital-label">Passive Perception</div><div class="vital-value">15</div></div>
+        </div>
+        <div class="status-note">Hide armor (nonmetal) · druids won&#x27;t wear metal</div>
+        <div class="hp-card">
+          <div class="hp-top"><div class="hp-title">Hit Points</div><div class="hp-readout"><span id="hpCurrentLabel">24</span>/<span id="hpMaxLabel">24</span></div><div class="temp-hp">Temp <strong id="tempHpLabel">0</strong></div></div>
+          <div class="hp-bar" aria-hidden="true"><div class="hp-fill" id="hpFill"></div></div>
+          <div class="hp-controls"><button type="button" class="step-btn" id="hpMinus" aria-label="Decrease hit points">−</button><input id="hpCurrent" data-save type="number" min="0" value="24" aria-label="Current hit points"><button type="button" class="step-btn" id="hpPlus" aria-label="Increase hit points">+</button></div>
+          <div class="hp-tools"><div><label class="sr-only" for="hpAmount">HP amount</label><input class="mini-input" id="hpAmount" type="number" min="0" value="1"></div><button type="button" class="small-btn" id="damageBtn">Damage</button><button type="button" class="small-btn" id="healBtn">Heal</button></div>
+          <div class="hp-tools"><div><label class="sr-only" for="hpMax">Maximum HP</label><input class="mini-input" id="hpMax" data-save type="number" min="1" value="24" title="Maximum hit points"></div><div><label class="sr-only" for="tempHp">Temporary HP</label><input class="mini-input" id="tempHp" data-save type="number" min="0" value="0" title="Temporary hit points"></div><button type="button" class="small-btn" id="fullHealBtn">Full Heal</button></div>
+        </div>
+      </div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Skills</h2><small>all modifiers aligned</small></div><div class="panel-body"><div class="legend"><span><i class="prof-dot"></i>Untrained</span><span><i class="prof-dot prof"></i>Proficient</span><span><i class="prof-dot expertise"></i>Expertise</span></div><div class="skill-list" id="skillList"></div></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Attacks & Damage</h2><small>roll modes apply</small></div><div class="panel-body" id="attackList"></div></section>
+
+      <section class="panel"><div class="panel-head arcane"><h2>Spellcasting</h2><small>slots and spells</small></div><div class="panel-body">
+        <div class="spell-stats" id="spellStats"></div>
+        <div id="spellSlots"></div>
+        <div class="status-note">Spell-slot pips are filled when available and hollow when spent. Spell cards do not spend a slot automatically.</div>
+        <div id="spellList" style="margin-top:12px"></div>
+      </div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Dice Tray</h2><small>free rolls</small></div><div class="panel-body"><div class="dice-grid" id="diceGrid"></div><div class="dice-options"><div><div class="counter-label">Quantity</div><div class="counter"><button type="button" data-counter="qty" data-delta="-1">−</button><output id="qtyOutput">1</output><button type="button" data-counter="qty" data-delta="1">+</button></div></div><div><div class="counter-label">Modifier</div><div class="counter"><button type="button" data-counter="mod" data-delta="-1">−</button><output id="modOutput">+0</output><button type="button" data-counter="mod" data-delta="1">+</button></div></div></div></div></section>
+    </div>
+
+    <div class="column right">
+      <section class="panel"><div class="panel-head"><h2>Death Saves</h2><small>click to mark</small></div><div class="panel-body"><div class="death-saves"><div class="save-track success"><label>Successes</label><div class="pips" data-resource="deathSuccess" data-count="3"></div></div><div class="save-track failure"><label>Failures</label><div class="pips" data-resource="deathFailure" data-count="3"></div></div></div></div></section>
+
+      <section class="panel"><div class="panel-head arcane"><h2>Wild Shape &amp; Recovery</h2><small>class tools</small></div><div class="panel-body" id="specialPanel"></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Features & Traits</h2><small>level 3</small></div><div class="panel-body" id="featureList"></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Proficiencies & Gear</h2><small>editable notes</small></div><div class="panel-body"><div class="field"><label for="languages">Languages</label><input id="languages" data-save value="Common, Elvish, Druidic, + one"></div><div id="proficiencyList" style="margin-top:10px"></div><div class="field" style="margin-top:10px"><label for="equipment">Equipment</label><textarea id="equipment" data-save>Hide armor · quarterstaff · scimitar · druidic focus (carved bone / totem) · explorer&#x27;s pack · herbalism kit · trophy from a hunt · Bureau field credentials</textarea></div></div></section>
+
+      <section class="panel"><div class="panel-head"><h2>Roll Log</h2><small id="logCount">0 rolls</small></div><div class="panel-body" style="padding:0"><ul class="log-list" id="rollLog"><li class="empty-log">No rolls yet.</li></ul></div></section>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:14px"><div class="panel-head"><h2>Personality & Case Notes</h2><small>autosaved locally</small></div><div class="panel-body"><div class="notes-grid"><div><label class="note-label" for="traits">Personality Traits</label><textarea class="notes-area" id="traits" data-save></textarea></div><div><label class="note-label" for="ideals">Ideals</label><textarea class="notes-area" id="ideals" data-save></textarea></div><div><label class="note-label" for="bonds">Bonds</label><textarea class="notes-area" id="bonds" data-save></textarea></div><div><label class="note-label" for="flaws">Flaws</label><textarea class="notes-area" id="flaws" data-save></textarea></div><div class="wide"><label class="note-label" for="caseNotes">Case Notes / Backstory</label><textarea class="notes-area" id="caseNotes" data-save style="min-height:105px"></textarea></div></div></div></section>
+
+  <section class="panel" style="margin-top:14px"><div class="panel-body utility-bar"><button type="button" class="rest-btn" id="shortRest">Short Rest</button><button type="button" class="rest-btn" id="longRest">Long Rest</button><button type="button" class="rest-btn" id="exportState">Export Save</button><button type="button" class="rest-btn" id="importState">Import Save</button><button type="button" class="rest-btn" id="printSheet">Print</button><button type="button" class="rest-btn" id="resetSheet">Reset Sheet</button><span class="save-state" id="saveState">Saved locally</span><input type="file" id="importFile" accept="application/json" hidden></div></section>
+
+  <footer>“The ground doesn&#x27;t lie. People do.” — Sienna King character dossier</footer>
+</main>
+
+<script>
+"use strict";
+const CHARACTER = {"name":"Sienna King","alias":"The Tracker","klass":"Druid (Circle of the Land)","level":3,"background":"Outlander (Bureau Field Asset)","species":"Half-Elf","quote":"The ground doesn't lie. People do.","slug":"sienna-king","ac":14,"acNote":"Hide armor (nonmetal) · druids won't wear metal","hp":24,"hitDice":"3d8","initiative":2,"passive":15,"proficiency":2,"speed":30,"abilities":[{"name":"STR","score":10,"mod":0,"save":0,"saveProf":false},{"name":"DEX","score":14,"mod":2,"save":2,"saveProf":false},{"name":"CON","score":14,"mod":2,"save":2,"saveProf":false},{"name":"INT","score":12,"mod":1,"save":3,"saveProf":true},{"name":"WIS","score":16,"mod":3,"save":5,"saveProf":true},{"name":"CHA","score":8,"mod":-1,"save":-1,"saveProf":false}],"skills":[{"name":"Acrobatics","ability":"DEX","mod":2,"rank":0},{"name":"Animal Handling","ability":"WIS","mod":5,"rank":1},{"name":"Arcana","ability":"INT","mod":1,"rank":0},{"name":"Athletics","ability":"STR","mod":2,"rank":1},{"name":"Deception","ability":"CHA","mod":-1,"rank":0},{"name":"History","ability":"INT","mod":1,"rank":0},{"name":"Insight","ability":"WIS","mod":5,"rank":1},{"name":"Intimidation","ability":"CHA","mod":-1,"rank":0},{"name":"Investigation","ability":"INT","mod":1,"rank":0},{"name":"Medicine","ability":"WIS","mod":3,"rank":0},{"name":"Nature","ability":"INT","mod":3,"rank":1},{"name":"Perception","ability":"WIS","mod":5,"rank":1},{"name":"Performance","ability":"CHA","mod":-1,"rank":0},{"name":"Persuasion","ability":"CHA","mod":-1,"rank":0},{"name":"Religion","ability":"INT","mod":1,"rank":0},{"name":"Sleight of Hand","ability":"DEX","mod":2,"rank":0},{"name":"Stealth","ability":"DEX","mod":2,"rank":0},{"name":"Survival","ability":"WIS","mod":5,"rank":1}],"attacks":[{"name":"Carved Staff (Quarterstaff)","hit":5,"dice":[[1,8]],"mod":3,"type":"bludgeoning","note":"Shillelagh active · WIS-based · 1d8"},{"name":"Trailblade (Scimitar)","hit":4,"dice":[[1,6]],"mod":2,"type":"slashing","note":"Finesse · light"}],"spellcasting":{"ability":"WIS","dc":13,"attack":5,"mod":3,"prepared":"6 + circle","slots":{"1":4,"2":2}},"spells":[{"name":"Produce Flame","lvl":0,"tag":"attack","dmg":[[1,8]],"dtype":"fire","note":"ranged 30 ft · also sheds light"},{"name":"Thorn Whip","lvl":0,"tag":"attack","dmg":[[1,6]],"dtype":"piercing","note":"reach 30 ft · pull Large-or-smaller 10 ft"},{"name":"Shillelagh","lvl":0,"tag":"util","note":"bonus action · quarterstaff uses WIS, deals 1d8 (see Attacks)"},{"name":"Cure Wounds","lvl":1,"tag":"heal","dmg":[[1,8]],"add":3,"note":"touch · heal 1d8 + 3"},{"name":"Entangle","lvl":1,"tag":"save","save":"STR","note":"20-ft square · restrained on failed STR save"},{"name":"Faerie Fire","lvl":1,"tag":"save","save":"DEX","note":"outlines targets · advantage to hit them"},{"name":"Thunderwave","lvl":1,"tag":"save","save":"CON","dmg":[[2,8]],"dtype":"thunder","note":"15-ft cube · half on save, push 10 ft"},{"name":"Goodberry","lvl":1,"tag":"util","note":"10 berries · each heals 1 HP, feeds for a day"},{"name":"Pass Without Trace","lvl":2,"tag":"util","note":"CIRCLE (always prepared) · +10 Stealth, can't be tracked"},{"name":"Invisibility","lvl":2,"tag":"util","note":"CIRCLE (always prepared) · turns a creature invisible 1 h"},{"name":"Spike Growth","lvl":2,"tag":"util","note":"20-ft radius difficult terrain · 2d4 per 5 ft moved"}],"resources":[{"key":"inspiration","name":"Inspiration","note":"Mark when spent","count":1,"refresh":"none"},{"key":"hitDice","name":"Hit Dice","note":"3d8 available","count":3,"refresh":"long"},{"key":"wildShape","name":"Wild Shape","note":"2 uses · refresh short rest","count":2,"refresh":"short","arcane":true},{"key":"naturalRecovery","name":"Natural Recovery","note":"Once per long rest","count":1,"refresh":"long","arcane":true}],"features":[["Spellcasting · WIS","Spell save DC 13 and +5 to hit. Prepare 6 druid spells after a long rest; circle spells are always prepared."],["Wild Shape","Twice per short rest. Transform into a beast of CR 1/4 or lower with no swimming or flying speed."],["Ritual Casting & Druidic","Cast prepared ritual spells as rituals and communicate through the secret language of druids."],["Bonus Cantrip","Circle of the Land grants one additional druid cantrip; Shillelagh is included here."],["Natural Recovery","Once per day during a short rest, recover spell slots totaling no more than 2 levels."],["Circle Spells · Grassland","Pass Without Trace and Invisibility are always prepared and do not count against prepared spells."]],"proficiencies":[["Armor & Shields","Light and medium nonmetal armor; nonmetal shields."],["Weapons","Clubs, daggers, darts, javelins, maces, quarterstaffs, scimitars, sickles, slings, and spears."],["Saving Throws","Intelligence and Wisdom."],["Skills","Nature, Perception, Survival, Athletics, Animal Handling, and Insight."]],"languages":"Common, Elvish, Druidic, + one","equipment":"Hide armor · quarterstaff · scimitar · druidic focus (carved bone / totem) · explorer's pack · herbalism kit · trophy from a hunt · Bureau field credentials","special":"wildshape","specialTitle":"Wild Shape & Recovery","conditions":["Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated","Invisible","Paralyzed","Poisoned","Prone","Restrained","Stunned"]};
+const STORAGE_KEY = CHARACTER.slug + "-sheet-v2";
+const cloneData = value => JSON.parse(JSON.stringify(value));
+const $ = selector => document.querySelector(selector);
+const $$ = selector => Array.prototype.slice.call(document.querySelectorAll(selector));
+const sign = n => (Number(n)>=0?"+":"")+Number(n);
+const clamp = (n,min,max) => Math.max(min,Math.min(max,n));
+const rollDie = sides => Math.floor(Math.random()*sides)+1;
+let storageEnabled=true;
+function readStorage(){try{return localStorage.getItem(STORAGE_KEY);}catch(error){storageEnabled=false;return null;}}
+function writeStorage(value){try{localStorage.setItem(STORAGE_KEY,value);return true;}catch(error){storageEnabled=false;return false;}}
+function clearStorage(){try{localStorage.removeItem(STORAGE_KEY);}catch(error){storageEnabled=false;}}
+
+const defaultResources={};
+CHARACTER.resources.forEach(r=>defaultResources[r.key]=Array(r.count).fill(false));
+defaultResources.deathSuccess=[false,false,false];
+defaultResources.deathFailure=[false,false,false];
+const defaultSlots={};
+Object.keys(CHARACTER.spellcasting.slots).forEach(level=>defaultSlots[level]=Array(CHARACTER.spellcasting.slots[level]).fill(false));
+const DEFAULTS={hpCurrent:CHARACTER.hp,hpMax:CHARACTER.hp,tempHp:0,resources:defaultResources,slots:defaultSlots,conditions:[],rolls:[],portentValues:[null,null],portentUsed:[false,false],fields:{}};
+let state=cloneData(DEFAULTS);
+let trayQty=1,trayMod=0;
+const mode={adv:false,dis:false,crit:false};
+let saveTimer;
+
+function diceText(groups){return (groups||[]).map(g=>g[0]+"d"+g[1]).join("+");}
+function rollGroups(groups,multiplier){let total=0,parts=[];(groups||[]).forEach(g=>{const count=g[0]*(multiplier||1),sides=g[1],vals=[];for(let i=0;i<count;i++){const v=rollDie(sides);vals.push(v);total+=v;}parts.push(count+"d"+sides+"["+vals.join(",")+"]");});return {total:total,detail:parts.join(" + ")};}
+function d20(){if(mode.adv||mode.dis){const a=rollDie(20),b=rollDie(20),picked=mode.adv?Math.max(a,b):Math.min(a,b);return {nat:picked,detail:"d20["+a+","+b+"] → "+picked+" "+(mode.adv?"adv":"dis")};}const a=rollDie(20);return {nat:a,detail:"d20["+a+"]"};}
+function showResult(label,total,detail,nat){const box=$("#resultNumber");box.textContent=total;box.classList.remove("nat20","nat1","stamp");void box.offsetWidth;if(nat===20)box.classList.add("nat20");if(nat===1)box.classList.add("nat1");box.classList.add("stamp");$("#resultLabel").textContent=label;$("#resultDetail").textContent=detail;state.rolls.unshift({label:label,total:total,detail:detail});state.rolls=state.rolls.slice(0,40);renderLog();saveState();}
+function rollCheck(label,bonus){const r=d20(),nat=r.nat===20?20:r.nat===1?1:0;showResult(label,r.nat+bonus,r.detail+" "+sign(bonus),nat);}
+function rollAttack(item,label){const r=d20(),nat=r.nat===20?20:r.nat===1?1:0;showResult(label||item.name+" — to hit",r.nat+item.hit,r.detail+" "+sign(item.hit)+(nat===20?" · CRITICAL":""),nat);}
+function rollDamage(item,label,allowCrit){const mult=(allowCrit&&mode.crit)?2:1;const r=rollGroups(item.dice,mult);const add=Number(item.mod||item.add||0);showResult(label||item.name+" — damage"+(mult===2?" CRIT":""),r.total+add,r.detail+(add?" "+sign(add):""),0);}
+function rollTray(sides){const groups=[[trayQty,sides]],r=rollGroups(groups,1),nat=sides===20&&trayQty===1?(r.total===20?20:r.total===1?1:0):0;showResult(trayQty+"d"+sides+(trayMod?sign(trayMod):""),r.total+trayMod,r.detail+(trayMod?" "+sign(trayMod):""),nat);}
+
+function renderAbilities(){const root=$("#abilityGrid");root.innerHTML="";CHARACTER.abilities.forEach(a=>{const el=document.createElement("div");el.className="ability";el.innerHTML='<div class="ability-name">'+a.name+'</div><div class="ability-score">'+a.score+'</div><button type="button" class="ability-mod" aria-label="Roll '+a.name+' check">'+sign(a.mod)+'</button><button type="button" class="save-btn '+(a.saveProf?'prof':'')+'">SAVE '+sign(a.save)+'</button>';el.querySelector(".ability-mod").addEventListener("click",()=>rollCheck(a.name+" check",a.mod));el.querySelector(".save-btn").addEventListener("click",()=>rollCheck(a.name+" save",a.save));root.appendChild(el);});}
+function renderSkills(){const root=$("#skillList");root.innerHTML="";CHARACTER.skills.forEach(s=>{const btn=document.createElement("button");btn.type="button";btn.className="skill-row"+(s.rank===2?" expertise":"");btn.innerHTML='<i class="prof-dot '+(s.rank===2?'expertise':s.rank===1?'prof':'')+'"></i><span class="skill-name">'+s.name+'<small class="skill-ability">'+s.ability+'</small></span><strong class="skill-mod">'+sign(s.mod)+'</strong>';btn.addEventListener("click",()=>rollCheck(s.name,s.mod));root.appendChild(btn);});}
+function renderAttacks(){const root=$("#attackList");root.innerHTML="";CHARACTER.attacks.forEach(a=>{const el=document.createElement("div");el.className="attack-card";el.innerHTML='<div class="attack-top"><div><div class="attack-name">'+a.name+'</div><div class="attack-meta">'+diceText(a.dice)+sign(a.mod)+' '+a.type+' · '+a.note+'</div></div><div class="attack-bonus">'+sign(a.hit)+'</div></div><div class="attack-actions"><button type="button" class="action-btn">To Hit '+sign(a.hit)+'</button><button type="button" class="action-btn secondary">Damage</button></div>';const buttons=el.querySelectorAll("button");buttons[0].addEventListener("click",()=>rollAttack(a));buttons[1].addEventListener("click",()=>rollDamage(a,null,true));root.appendChild(el);});}
+function renderDice(){const root=$("#diceGrid");root.innerHTML="";[4,6,8,10,12,20,100].forEach(s=>{const b=document.createElement("button");b.type="button";b.className="die-btn";b.textContent="d"+s;b.addEventListener("click",()=>rollTray(s));root.appendChild(b);});}
+function renderConditions(){const root=$("#conditionList");root.innerHTML="";CHARACTER.conditions.forEach(c=>{const b=document.createElement("button");b.type="button";b.className="condition";b.textContent=c;b.setAttribute("aria-pressed",String(state.conditions.indexOf(c)>=0));b.addEventListener("click",()=>{const active=b.getAttribute("aria-pressed")==="true";b.setAttribute("aria-pressed",String(!active));state.conditions=CHARACTER.conditions.filter(name=>root.querySelector('button[aria-pressed="true"]')&&Array.from(root.querySelectorAll('button[aria-pressed="true"]')).some(x=>x.textContent===name));saveState();});root.appendChild(b);});}
+function createPips(container,key,count,arcane){container.innerHTML="";if(!state.resources[key]||state.resources[key].length!==count)state.resources[key]=Array(count).fill(false);for(let i=0;i<count;i++){const b=document.createElement("button");b.type="button";b.className="pip";b.setAttribute("aria-label",key+" "+(i+1));b.setAttribute("aria-pressed",String(!!state.resources[key][i]));b.addEventListener("click",()=>{state.resources[key][i]=!state.resources[key][i];b.setAttribute("aria-pressed",String(state.resources[key][i]));saveState();});container.appendChild(b);}}
+function renderResources(){const root=$("#resourceList");root.innerHTML="";CHARACTER.resources.forEach(r=>{const row=document.createElement("div");row.className="resource-row"+(r.arcane?" arcane":"");row.innerHTML='<div><div class="resource-name">'+r.name+'</div><div class="resource-note">'+r.note+'</div></div><div class="pips"></div>';root.appendChild(row);createPips(row.querySelector(".pips"),r.key,r.count,r.arcane);});$$('[data-resource="deathSuccess"],[data-resource="deathFailure"]').forEach(el=>createPips(el,el.dataset.resource,Number(el.dataset.count),false));}
+function renderSpellStats(){const sc=CHARACTER.spellcasting;const root=$("#spellStats");root.innerHTML=[['Spell Save DC',sc.dc],['Spell Attack',sign(sc.attack)],['Ability',sc.ability+' '+sign(sc.mod)],['Prepared',sc.prepared]].map(x=>'<div class="spell-stat"><div class="spell-stat-label">'+x[0]+'</div><div class="spell-stat-value">'+x[1]+'</div></div>').join('');}
+function renderSlots(){const root=$("#spellSlots");root.innerHTML="";Object.keys(CHARACTER.spellcasting.slots).sort((a,b)=>Number(a)-Number(b)).forEach(level=>{const count=CHARACTER.spellcasting.slots[level];if(!state.slots[level]||state.slots[level].length!==count)state.slots[level]=Array(count).fill(false);const group=document.createElement("div");group.className="slot-group";group.innerHTML='<div class="slot-line"><div><div class="slot-name">Level '+level+' Slots</div><div class="slot-note">'+count+' total</div></div><div class="slot-pips"></div></div>';const pips=group.querySelector(".slot-pips");for(let i=0;i<count;i++){const b=document.createElement("button");b.type="button";b.className="slot-pip";b.setAttribute("aria-label","Level "+level+" spell slot "+(i+1));b.setAttribute("aria-pressed",String(!!state.slots[level][i]));b.addEventListener("click",()=>{state.slots[level][i]=!state.slots[level][i];b.setAttribute("aria-pressed",String(state.slots[level][i]));saveState();});pips.appendChild(b);}root.appendChild(group);});}
+function spellLevelName(level){return Number(level)===0?'Cantrip':'Level '+level;}
+function logSpellUse(spell){showResult(spell.name,'CAST',spellLevelName(spell.lvl)+' · '+spell.note,0);}
+function renderSpells(){const root=$("#spellList");root.innerHTML="";const levels=[...new Set(CHARACTER.spells.map(s=>Number(s.lvl)))].sort((a,b)=>a-b);levels.forEach(level=>{const section=document.createElement("section");section.className="spell-section";const spells=CHARACTER.spells.filter(s=>Number(s.lvl)===level);section.innerHTML='<div class="spell-section-title"><span>'+spellLevelName(level)+'</span><span>'+spells.length+' spell'+(spells.length===1?'':'s')+'</span></div>';spells.forEach(sp=>{const card=document.createElement("div");card.className="spell-card";card.innerHTML='<div class="spell-top"><div class="spell-name">'+sp.name+'</div><span class="spell-level">'+spellLevelName(sp.lvl)+'</span></div><div class="spell-meta">'+sp.note+'</div><div class="spell-actions"></div>';const actions=card.querySelector(".spell-actions");function add(label,cls,fn){const b=document.createElement("button");b.type="button";b.className="spell-btn"+(cls?' '+cls:'');b.textContent=label;b.addEventListener("click",fn);actions.appendChild(b);}if(sp.tag==='attack'){add('Spell Attack '+sign(CHARACTER.spellcasting.attack),'',()=>rollAttack({name:sp.name,hit:CHARACTER.spellcasting.attack},sp.name+' — spell attack'));if(sp.dmg)add('Damage','secondary',()=>rollDamage({name:sp.name,dice:sp.dmg,mod:sp.add||0},sp.name+' — damage'+(mode.crit?' CRIT':''),true));}else if(sp.tag==='heal'){add('Healing Roll','heal',()=>rollDamage({name:sp.name,dice:sp.dmg,mod:sp.add||0},sp.name+' — healing',false));}else if(sp.tag==='roll'){add('Roll Effect','',()=>rollDamage({name:sp.name,dice:sp.dmg,mod:sp.add||0},sp.name+' — effect',false));}else if(sp.tag==='save'){add('DC '+CHARACTER.spellcasting.dc+' '+sp.save,'secondary',()=>showResult(sp.name,'DC '+CHARACTER.spellcasting.dc,sp.save+' saving throw · '+sp.note,0));if(sp.dmg)add('Damage','',()=>rollDamage({name:sp.name,dice:sp.dmg,mod:sp.add||0},sp.name+' — damage',false));}else{add(Number(sp.lvl)>0?'Cast / Use':'Use','secondary',()=>logSpellUse(sp));}section.appendChild(card);});root.appendChild(section);});}
+function renderSpecial(){const root=$("#specialPanel");if(CHARACTER.special==='portent'){root.innerHTML='<div class="special-box"><h3>Recorded Futures</h3><p>Roll two d20s after a long rest. Mark a result used after replacing a roll.</p><div class="portent-grid" id="portentGrid"></div><button type="button" class="special-action" id="rollPortents">Roll New Portents</button></div>';renderPortents();$("#rollPortents").addEventListener("click",()=>rollPortents(false));}else{root.innerHTML='<div class="special-grid"><div class="special-box"><h3>Wild Shape</h3><p>Two uses per short rest. CR 1/4 maximum; no swimming or flying speed. Suggested scouting forms: wolf or giant rat.</p></div><div class="special-box"><h3>Natural Recovery</h3><p>Once per long rest during a short rest, recover slots totaling up to 2 levels: one 2nd-level slot or two 1st-level slots.</p></div><div class="special-box"><h3>Grassland Circle Spells</h3><p>Pass Without Trace and Invisibility are always prepared.</p></div></div>';}}
+function renderPortents(){const grid=$("#portentGrid");if(!grid)return;grid.innerHTML="";for(let i=0;i<2;i++){const val=state.portentValues[i];const used=state.portentUsed[i];const card=document.createElement("div");card.className="portent-card"+(used?' used':'');card.innerHTML='<div class="portent-value">'+(val==null?'—':val)+'</div><div class="portent-actions"><button type="button" data-use> '+(used?'Restore':'Use')+' </button><button type="button" data-reroll>Reroll</button></div>';card.querySelector('[data-use]').addEventListener('click',()=>{if(state.portentValues[i]==null)return;state.portentUsed[i]=!state.portentUsed[i];renderPortents();saveState();});card.querySelector('[data-reroll]').addEventListener('click',()=>{state.portentValues[i]=rollDie(20);state.portentUsed[i]=false;renderPortents();saveState();});grid.appendChild(card);}}
+function rollPortents(fromRest){state.portentValues=[rollDie(20),rollDie(20)];state.portentUsed=[false,false];renderPortents();showResult('Portent',state.portentValues.join(' / '),(fromRest?'Long rest · ':'')+'two futures recorded',0);}
+function renderFeatures(){const root=$("#featureList");root.innerHTML=CHARACTER.features.map(f=>'<div class="feature"><h3>'+f[0]+'</h3><p>'+f[1]+'</p></div>').join('');}
+function renderProficiencies(){const root=$("#proficiencyList");root.innerHTML=CHARACTER.proficiencies.map(f=>'<div class="feature"><h3>'+f[0]+'</h3><p>'+f[1]+'</p></div>').join('');}
+function renderLog(){const root=$("#rollLog");$("#logCount").textContent=state.rolls.length+' roll'+(state.rolls.length===1?'':'s');if(!state.rolls.length){root.innerHTML='<li class="empty-log">No rolls yet.</li>';return;}root.innerHTML=state.rolls.map(r=>'<li class="log-item"><div class="log-top"><span class="log-name">'+r.label+'</span><span class="log-total">'+r.total+'</span></div><div class="log-detail">'+r.detail+'</div></li>').join('');}
+function updateHp(){let cur=Math.max(0,Number($("#hpCurrent").value)||0),max=Math.max(1,Number($("#hpMax").value)||1),temp=Math.max(0,Number($("#tempHp").value)||0);$("#hpCurrent").value=cur;$("#hpMax").value=max;$("#tempHp").value=temp;$("#hpCurrentLabel").textContent=cur;$("#hpMaxLabel").textContent=max;$("#tempHpLabel").textContent=temp;const pct=clamp(cur/max*100,0,100),fill=$("#hpFill");fill.style.width=pct+'%';fill.style.background=pct<=25?'var(--red)':pct<=50?'var(--gold)':'var(--green)';state.hpCurrent=cur;state.hpMax=max;state.tempHp=temp;saveState();}
+function applyDamage(amount){amount=Math.max(0,Number(amount)||0);let temp=Number($("#tempHp").value)||0;const absorbed=Math.min(temp,amount);temp-=absorbed;amount-=absorbed;$("#tempHp").value=temp;if(amount>0)$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-amount);updateHp();}
+function applyHeal(amount){const max=Number($("#hpMax").value)||1;$("#hpCurrent").value=Math.min(max,(Number($("#hpCurrent").value)||0)+Math.max(0,Number(amount)||0));updateHp();}
+function setMode(button,key,exclusive){mode[key]=!mode[key];button.setAttribute('aria-pressed',String(mode[key]));if(mode[key]&&exclusive){mode[exclusive]=false;$(exclusive==='adv'?'#advToggle':'#disToggle').setAttribute('aria-pressed','false');}}
+function collectFields(){const f={};$$('[data-save]').forEach(el=>f[el.id]=el.value);return f;}
+function populateFields(fields){Object.keys(fields||{}).forEach(id=>{const el=document.getElementById(id);if(el)el.value=fields[id];});}
+function saveState(){clearTimeout(saveTimer);const status=$("#saveState");if(status)status.textContent='Saving…';saveTimer=setTimeout(()=>{state.fields=collectFields();const ok=writeStorage(JSON.stringify(state));if(status)status.textContent=ok?'Saved locally':'Session only';updateHeader();},100);}
+function loadState(){try{const saved=JSON.parse(readStorage()||'null');if(saved)state=Object.assign(cloneData(DEFAULTS),saved,{resources:Object.assign(cloneData(DEFAULTS.resources),saved.resources||{}),slots:Object.assign(cloneData(DEFAULTS.slots),saved.slots||{})});}catch(error){console.warn(error);}populateFields(state.fields||{});$("#hpCurrent").value=state.hpCurrent;$("#hpMax").value=state.hpMax;$("#tempHp").value=state.tempHp;}
+function updateHeader(){const name=$("#charName").value.trim()||'Unnamed Character',cls=$("#charClass").value.trim()||'Class',lvl=$("#charLevel").value||'1',bg=$("#charBackground").value.trim()||'Background';$("#headerName").textContent=name+' — '+CHARACTER.alias;$("#headerClass").textContent=cls+' '+lvl+' · '+bg+' · Proficiency +'+CHARACTER.proficiency;}
+function exportSave(){state.fields=collectFields();const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=CHARACTER.slug+'-character-save.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+function importSave(file){const reader=new FileReader();reader.onload=()=>{try{const x=JSON.parse(reader.result);state=Object.assign(cloneData(DEFAULTS),x,{resources:Object.assign(cloneData(DEFAULTS.resources),x.resources||{}),slots:Object.assign(cloneData(DEFAULTS.slots),x.slots||{})});populateFields(state.fields||{});$("#hpCurrent").value=state.hpCurrent;$("#hpMax").value=state.hpMax;$("#tempHp").value=state.tempHp;renderResources();renderSlots();renderConditions();renderPortents();renderLog();updateHp();updateHeader();}catch(error){alert('That file is not a valid character-sheet save.');}};reader.readAsText(file);}
+function resetByRefresh(refresh){CHARACTER.resources.forEach(r=>{if(r.refresh===refresh||refresh==='long'&&r.refresh==='short')state.resources[r.key]=Array(r.count).fill(false);});}
+function shortRest(){resetByRefresh('short');renderResources();showResult('Short Rest','REST','Short-rest resources restored',0);saveState();}
+function longRest(){$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;resetByRefresh('long');Object.keys(state.slots).forEach(l=>state.slots[l]=state.slots[l].map(()=>false));state.resources.deathSuccess=[false,false,false];state.resources.deathFailure=[false,false,false];state.conditions=[];renderResources();renderSlots();renderConditions();updateHp();if(CHARACTER.special==='portent')rollPortents(true);else showResult('Long Rest','REST','HP, slots, and resources restored',0);saveState();}
+function bindEvents(){$("#advToggle").addEventListener('click',e=>setMode(e.currentTarget,'adv','dis'));$("#disToggle").addEventListener('click',e=>setMode(e.currentTarget,'dis','adv'));$("#critToggle").addEventListener('click',e=>setMode(e.currentTarget,'crit'));$("#initiativeRoll").addEventListener('click',()=>rollCheck('Initiative',CHARACTER.initiative));$("#hpMinus").addEventListener('click',()=>{$("#hpCurrent").value=Math.max(0,(Number($("#hpCurrent").value)||0)-1);updateHp();});$("#hpPlus").addEventListener('click',()=>{$("#hpCurrent").value=(Number($("#hpCurrent").value)||0)+1;updateHp();});$("#damageBtn").addEventListener('click',()=>applyDamage($("#hpAmount").value));$("#healBtn").addEventListener('click',()=>applyHeal($("#hpAmount").value));$("#fullHealBtn").addEventListener('click',()=>{$("#hpCurrent").value=$("#hpMax").value;$("#tempHp").value=0;updateHp();});['hpCurrent','hpMax','tempHp'].forEach(id=>$("#"+id).addEventListener('input',updateHp));$$('[data-counter]').forEach(b=>b.addEventListener('click',()=>{const d=Number(b.dataset.delta);if(b.dataset.counter==='qty'){trayQty=clamp(trayQty+d,1,20);$("#qtyOutput").textContent=trayQty;}else{trayMod=clamp(trayMod+d,-20,20);$("#modOutput").textContent=sign(trayMod);}}));$("#undoRoll").addEventListener('click',()=>{state.rolls.shift();renderLog();saveState();});$("#clearRolls").addEventListener('click',()=>{state.rolls=[];renderLog();saveState();});$("#shortRest").addEventListener('click',shortRest);$("#longRest").addEventListener('click',longRest);$("#exportState").addEventListener('click',exportSave);$("#importState").addEventListener('click',()=>$("#importFile").click());$("#importFile").addEventListener('change',e=>{if(e.target.files[0])importSave(e.target.files[0]);e.target.value='';});$("#printSheet").addEventListener('click',()=>window.print());$("#resetSheet").addEventListener('click',()=>{if(confirm('Reset all editable fields, trackers, spell slots, and roll history?')){clearStorage();location.reload();}});$$('[data-save]').forEach(el=>el.addEventListener('input',saveState));}
+function initialize(){loadState();renderAbilities();renderSkills();renderAttacks();renderDice();renderConditions();renderResources();renderSpellStats();renderSlots();renderSpells();renderSpecial();renderFeatures();renderProficiencies();renderLog();bindEvents();updateHp();updateHeader();const warning=$("#interactionWarning");if(warning)warning.hidden=true;document.documentElement.dataset.sheetReady='true';}
+try{initialize();}catch(error){console.error(error);const warning=document.getElementById('interactionWarning');if(warning){warning.hidden=false;warning.textContent='Interactive controls could not start in this viewer. Open the hosted GitHub Pages link in Safari or another full browser.';}}
+</script>
+</body>
+</html>
