@@ -41,8 +41,12 @@
     font:14px/1.45 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
   button,input,textarea,select{font:inherit}
-  button{color:inherit}
+  button{color:inherit;-webkit-appearance:none;appearance:none}
+  button,[role="button"],input,textarea,select{touch-action:manipulation}
+  button,[role="button"]{-webkit-tap-highlight-color:rgba(123,45,45,.18)}
   .shell{max-width:1240px;margin:0 auto;padding:18px 18px 56px}
+  .back-link{display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;color:var(--red);font-size:11px;font-weight:900;letter-spacing:.07em;text-decoration:none;text-transform:uppercase}
+  .back-link:hover{text-decoration:underline}
 
   .masthead{
     position:relative;
@@ -236,6 +240,11 @@
 
   .skill-list{display:grid;grid-template-columns:1fr}
   .skill-row{
+    width:100%;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    text-align:left;
     display:grid;
     grid-template-columns:18px minmax(0,1fr) 42px;
     gap:8px;
@@ -323,6 +332,11 @@
   .rest-btn{padding:7px 9px;border-radius:7px;background:var(--paper);border-color:var(--line);color:var(--ink);font-size:10px;font-weight:800}
   .rest-btn:hover{border-color:var(--red);background:#fff}
   .save-state{margin-left:auto;color:var(--muted);font-size:10px;align-self:center}
+  .interaction-warning{
+    margin:12px 0 0;padding:10px 12px;border:1px solid #b98742;border-radius:9px;
+    background:#fff4d8;color:#5b421d;font-size:12px;font-weight:700;
+  }
+  .interaction-warning[hidden]{display:none}
 
   footer{margin-top:18px;text-align:center;color:var(--muted);font-size:10px;font-style:italic}
   .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -364,7 +378,7 @@
   @media print{
     body{background:#fff}
     .shell{max-width:none;padding:0}
-    .roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
+    .back-link,.roll-console,.utility-bar,.dice-grid,.dice-options,.attack-actions,.hp-tools,.hp-controls,.condition-list,footer{display:none!important}
     .masthead,.panel{box-shadow:none;break-inside:avoid}
     .dashboard{grid-template-columns:1fr 1.25fr 1fr;gap:8px}
     .column{gap:8px}
@@ -375,6 +389,7 @@
 </head>
 <body>
 <main class="shell">
+  <a class="back-link" href="../">← Character Select</a>
   <header class="masthead">
     <div>
       <div class="eyebrow">The Ironspine · Vermillion Bureau · Casefile 001</div>
@@ -386,6 +401,10 @@
       <span id="headerClass">Rogue (Mastermind) 3 · Bureau Detective · Proficiency +2</span>
     </div>
   </header>
+
+  <div class="interaction-warning" id="interactionWarning" role="status">
+    Interactive controls have not started. The current file preview may block JavaScript. Save the HTML file and open it in Safari or another full browser.
+  </div>
 
   <section class="roll-console" aria-label="Roll console">
     <div class="result" aria-live="polite">
@@ -622,14 +641,17 @@ const CHARACTER = {
     {name:"Survival",ability:"WIS",mod:1,rank:0}
   ],
   attacks: [
-    {name:'Rapier “Sword-Cane”',hit:5,damage:[[1,8]],mod:3,type:"piercing",note:"Finesse · melee"},
-    {name:'Hand Crossbow “Snub Revolver”',hit:5,damage:[[1,6]],mod:3,type:"piercing",note:"Range 30/120 · light"},
-    {name:'Dagger “Boot Knife”',hit:5,damage:[[1,4]],mod:3,type:"piercing",note:"Finesse · thrown 20/60"}
+    {name:'Sword Cane (Rapier)',hit:5,damage:[[1,8]],mod:3,type:"piercing",note:"Finesse · melee"},
+    {name:'Snub Revolver (Hand Crossbow)',hit:5,damage:[[1,6]],mod:3,type:"piercing",note:"Range 30/120 · light"},
+    {name:'Boot Knife (Dagger)',hit:5,damage:[[1,4]],mod:3,type:"piercing",note:"Finesse · thrown 20/60"}
   ],
   conditions:["Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated","Invisible","Paralyzed","Poisoned","Prone","Restrained","Stunned"]
 };
 
 const STORAGE_KEY = "damon-cross-sheet-v2";
+function cloneData(value){
+  return JSON.parse(JSON.stringify(value));
+}
 let storageEnabled = true;
 function readStorage(){
   try{return localStorage.getItem(STORAGE_KEY);}catch(error){storageEnabled=false;return null;}
@@ -649,7 +671,7 @@ const DEFAULTS = {
 const mode = {adv:false,dis:false,sneak:false,crit:false};
 let trayQty = 1;
 let trayMod = 0;
-let state = structuredClone(DEFAULTS);
+let state = cloneData(DEFAULTS);
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -743,10 +765,9 @@ function renderAbilities(){
 function renderSkills(){
   const list=$("#skillList");
   CHARACTER.skills.forEach(skill=>{
-    const row=document.createElement("div");
+    const row=document.createElement("button");
+    row.type="button";
     row.className=`skill-row ${skill.rank===2?"expertise":""}`;
-    row.setAttribute("role","button");
-    row.setAttribute("tabindex","0");
     row.setAttribute("aria-label",`Roll ${skill.name} ${sign(skill.mod)}`);
     const dotClass=skill.rank===2?"expertise":skill.rank===1?"prof":"";
     row.innerHTML=`
@@ -755,7 +776,6 @@ function renderSkills(){
       <strong class="skill-mod">${sign(skill.mod)}</strong>`;
     const roll=()=>rollCheck(skill.name,skill.mod);
     row.addEventListener("click",roll);
-    row.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();roll();}});
     list.appendChild(row);
   });
 }
@@ -915,7 +935,7 @@ function loadState(){
   try{
     const saved=JSON.parse(readStorage()||"null");
     if(saved){
-      state={...structuredClone(DEFAULTS),...saved,resources:{...structuredClone(DEFAULTS.resources),...(saved.resources||{})}};
+      state={...cloneData(DEFAULTS),...saved,resources:{...cloneData(DEFAULTS.resources),...(saved.resources||{})}};
       populateFields(state.fields||{});
     }
   }catch(error){console.warn("Could not load saved sheet",error);}
@@ -951,7 +971,7 @@ function importSave(file){
   reader.onload=()=>{
     try{
       const imported=JSON.parse(reader.result);
-      state={...structuredClone(DEFAULTS),...imported,resources:{...structuredClone(DEFAULTS.resources),...(imported.resources||{})}};
+      state={...cloneData(DEFAULTS),...imported,resources:{...cloneData(DEFAULTS.resources),...(imported.resources||{})}};
       populateFields(state.fields||{});
       $("#hpCurrent").value=state.hpCurrent;
       $("#hpMax").value=state.hpMax;
@@ -1010,17 +1030,33 @@ function bindEvents(){
   $$('[data-save]').forEach(el=>el.addEventListener("input",saveState));
 }
 
-loadState();
-renderAbilities();
-renderSkills();
-renderAttacks();
-renderDice();
-renderConditions();
-renderResources();
-renderLog();
-bindEvents();
-updateHp();
-updateHeader();
+function initializeSheet(){
+  loadState();
+  renderAbilities();
+  renderSkills();
+  renderAttacks();
+  renderDice();
+  renderConditions();
+  renderResources();
+  renderLog();
+  bindEvents();
+  updateHp();
+  updateHeader();
+  const warning=$("#interactionWarning");
+  if(warning) warning.hidden=true;
+  document.documentElement.dataset.sheetReady="true";
+}
+
+try{
+  initializeSheet();
+}catch(error){
+  console.error("Character sheet failed to initialize",error);
+  const warning=document.getElementById("interactionWarning");
+  if(warning){
+    warning.hidden=false;
+    warning.textContent="Interactive controls could not start in this viewer. Save the HTML file and open it in Safari or another full browser.";
+  }
+}
 </script>
 </body>
 </html>
